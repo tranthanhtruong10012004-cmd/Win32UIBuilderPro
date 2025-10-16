@@ -147,7 +147,7 @@ body{
 <div id="stylePopup"></div>
 <script>
 // ==============================
-// ⚙️ CORE LOGIC – Win32UIBuilderPro v7.6.3
+// ⚙️ CORE LOGIC – Win32UIBuilderPro v7.7.3
 // ==============================
 const canvasWrapper=document.getElementById("canvasWrapper");
 const canvas=document.getElementById("canvas");
@@ -586,8 +586,151 @@ function saveState(){undoStack.push(JSON.stringify(getLayout()));if(undoStack.le
 document.getElementById("undoBtn").onclick=()=>{if(undoStack.length<2)return;undoStack.pop();setLayout(JSON.parse(undoStack.at(-1)));};
 document.getElementById("clearBtn").onclick=()=>{if(confirm("Xóa toàn bộ layout?")){canvas.innerHTML="";saveState();}};
 document.getElementById("saveBtn").onclick=()=>{const blob=new Blob([JSON.stringify(getLayout(),null,2)],{type:"text/plain"});const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="layout_v763.txt";a.click();};
-document.getElementById("loadBtn").onclick=()=>{const inp=document.createElement("input");inp.type="file";inp.accept=".txt,.json";inp.onchange=e=>{const f=e.target.files[0];const r=new FileReader();r.onload=ev=>setLayout(JSON.parse(ev.target.result));r.readAsText(f);};inp.click();};
 document.getElementById("removeBtn").onclick=()=>{if(selectedControl){selectedControl.remove();selectedControl=null;propertyContent.textContent="Chọn control để chỉnh";saveState();}};
+// ======================= NẠP LAYOUT (.txt / .json) =======================
+document.getElementById("loadBtn").onclick = () => {
+  const inp = document.createElement("input");
+  inp.type = "file";
+  inp.accept = ".txt,.json";
+
+  inp.onchange = (e) => {
+    const f = e.target.files[0];
+    if (!f) return;
+    const r = new FileReader();
+
+    r.onload = (ev) => {
+      try {
+        const layout = JSON.parse(ev.target.result);
+        if (!layout || !layout.controls) {
+          alert("❌ File không hợp lệ hoặc thiếu phần 'controls'.");
+          return;
+        }
+
+        // Xóa control cũ trên canvas
+        document.querySelectorAll(".control").forEach(el => el.remove());
+
+        layout.controls.forEach(c => {
+          let el;
+          switch (c.type) {
+            case "Button":
+              el = document.createElement("button");
+              el.textContent = c.caption || "Button";
+              break;
+            case "Edit":
+              el = document.createElement("input");
+              el.type = "text";
+              el.value = c.caption || "";
+              break;
+            case "Static":
+              el = document.createElement("label");
+              el.textContent = c.caption || "Static";
+              break;
+            case "CheckBox":
+              el = document.createElement("input");
+              el.type = "checkbox";
+              el.style.width = "16px";
+              el.style.height = "16px";
+              break;
+            case "RadioButton":
+              el = document.createElement("input");
+              el.type = "radio";
+              el.style.width = "16px";
+              el.style.height = "16px";
+              break;
+            case "ComboBox":
+              el = document.createElement("select");
+              for (let i = 1; i <= 5; i++) {
+                const o = document.createElement("option");
+                o.textContent = "Item " + i;
+                el.appendChild(o);
+              }
+              break;
+            case "ListBox":
+              el = document.createElement("select");
+              el.multiple = true;
+              for (let i = 1; i <= 10; i++) {
+                const o = document.createElement("option");
+                o.textContent = "Item " + i;
+                el.appendChild(o);
+              }
+              break;
+            case "ProgressBar":
+              el = document.createElement("progress");
+              el.value = 40;
+              el.max = 100;
+              el.style.height = "16px";
+              break;
+            case "GroupBox":
+              el = document.createElement("fieldset");
+              const lg = document.createElement("legend");
+              lg.textContent = c.caption || "GroupBox";
+              el.appendChild(lg);
+              break;
+            default:
+              el = document.createElement("div");
+              el.textContent = c.caption || c.type;
+          }
+
+          // dataset cho export
+          el.dataset.type = c.type;
+          el.dataset.caption = c.caption || "";
+          el.dataset.style = c.style || "";
+          el.dataset.id = c.id || "";
+          el.style.position = "absolute";
+          el.style.left = c.x + "px";
+          el.style.top = c.y + "px";
+          el.style.width = c.w + "px";
+          el.style.height = c.h + "px";
+
+          el.classList.add("control");
+          document.getElementById("canvas").appendChild(el);
+
+          // gắn lại sự kiện chọn và kéo thả
+          makeElementDraggable(el);
+          el.onclick = (ev) => selectControl(el, ev);
+        });
+
+        alert("✅ Nạp layout thành công!");
+      } catch (err) {
+        alert("❌ Lỗi đọc layout: " + err.message);
+      }
+    };
+
+    r.readAsText(f);
+  };
+
+  inp.click();
+};
+function makeElementDraggable(el) {
+  let offsetX = 0, offsetY = 0, startX = 0, startY = 0;
+  const canvas = document.getElementById("canvas");
+
+  el.onmousedown = function (e) {
+    e.preventDefault();
+    startX = e.clientX;
+    startY = e.clientY;
+    offsetX = parseInt(el.style.left || 0);
+    offsetY = parseInt(el.style.top || 0);
+
+    document.onmousemove = dragElement;
+    document.onmouseup = stopDrag;
+    el.classList.add("dragging");
+  };
+
+  function dragElement(e) {
+    e.preventDefault();
+    const dx = e.clientX - startX;
+    const dy = e.clientY - startY;
+    el.style.left = offsetX + dx + "px";
+    el.style.top = offsetY + dy + "px";
+  }
+
+  function stopDrag() {
+    document.onmouseup = null;
+    document.onmousemove = null;
+    el.classList.remove("dragging");
+  }
+}
 
 // 📤 Xuất C++ code đẹp
 document.getElementById("exportBtn").onclick = () => {
