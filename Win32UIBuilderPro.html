@@ -463,7 +463,87 @@ window.addEventListener("DOMContentLoaded", () => {
   const CENTER = 4000;
   let selected = null, isDragging = false, ox = 0, oy = 0, locked = false, zoomLevel = 100;
   const undoStack = [], MAX_UNDO = 20;
+// 🎹 Hotkeys hỗ trợ toàn cục (Ctrl + S, O, D, Z, E)
+document.addEventListener("keydown", (e) => {
+  const tag = e.target.tagName.toLowerCase();
+  const isTyping = tag === "input" || tag === "textarea" || e.target.isContentEditable;
 
+  // ⛔ bỏ qua nếu đang nhập text và không giữ Ctrl
+  if (!e.ctrlKey && isTyping) return;
+
+  // Ctrl + S → Lưu layout
+  if (e.ctrlKey && e.key.toLowerCase() === "s") {
+    e.preventDefault();
+    const blob = new Blob([JSON.stringify(getLayout(), null, 2)], { type: "application/json" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "layout_hotkey.json";
+    a.click();
+    console.log("💾 Ctrl+S: Layout saved");
+  }
+
+  // Ctrl + O → Nạp layout
+  if (e.ctrlKey && e.key.toLowerCase() === "o") {
+    e.preventDefault();
+    const inp = document.createElement("input");
+    inp.type = "file";
+    inp.accept = ".json";
+    inp.onchange = (ev) => {
+      const f = ev.target.files[0];
+      if (!f) return;
+      const r = new FileReader();
+      r.onload = (rEvent) => {
+        try {
+          setLayout(JSON.parse(rEvent.target.result));
+          console.log("📂 Ctrl+O: Layout loaded");
+        } catch (err) {
+          console.error("❌ Load error:", err.message);
+        }
+      };
+      r.readAsText(f);
+    };
+    inp.click();
+  }
+
+  // Ctrl + D hoặc Delete → Xóa control đang chọn
+  if ((e.ctrlKey && e.key.toLowerCase() === "d") || e.key === "Delete") {
+    e.preventDefault();
+    if (selected) {
+      selected.remove();
+      selected = null;
+      propertyContent.innerHTML = "Chọn control để chỉnh";
+      saveState();
+      console.log("🗑 Ctrl+D/Delete: Control removed");
+    }
+  }
+
+  // Ctrl + Z → Undo
+  if (e.ctrlKey && e.key.toLowerCase() === "z") {
+    e.preventDefault();
+    if (undoStack.length > 1) {
+      undoStack.pop();
+      const prev = JSON.parse(undoStack[undoStack.length - 1]);
+      setLayout(prev);
+      console.log("↩️ Ctrl+Z: Undo");
+    }
+  }
+
+  // Ctrl + E → Xuất code
+  if (e.ctrlKey && e.key.toLowerCase() === "e") {
+    e.preventDefault();
+    document.getElementById("exportBtn")?.click();
+    console.log("📤 Ctrl+E: Code exported");
+  }
+}, true);
+window.addEventListener("beforeunload", (e) => {
+    const hasControl = document.querySelectorAll(".control").length > 0;
+    if (hasControl) {
+      const confirmationMessage = "Bạn có muốn lưu layout trước khi thoát không?";
+      e.preventDefault();
+      e.returnValue = confirmationMessage; // Chrome, Edge, Firefox
+      return confirmationMessage;
+    }
+  });
   // 🌙 Dark/Light toggle
   themeToggle.onclick = () => {
     document.body.classList.toggle("dark");
@@ -807,6 +887,8 @@ canvasWrapper.scrollLeft = CENTER - canvasWrapper.clientWidth / 2;
     alert("✅ Copied!");
   };
 });
+
+
 </script>
 
 </body>
