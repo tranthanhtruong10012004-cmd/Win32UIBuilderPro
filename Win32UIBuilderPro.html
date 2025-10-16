@@ -3,747 +3,677 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Win32 UI Builder Pro v7.4 Live</title>
+<title>Win32 UI Builder Pro v7.7.0</title>
 <style>
 :root {
-  --bg: #f5f5f5;
-  --panel: #ffffff;
-  --text: #222;
-  --border: #ccc;
-  --accent: #0078D7;
-  --control-bg: #fafafa;
+  --bg:#f5f5f5;--panel:#fff;--text:#222;
+  --border:#ccc;--accent:#0078D7;--control-bg:#fafafa;
 }
 body.dark {
-  --bg: #1e1e1e;
-  --panel: #252526;
-  --text: #f5f5f5;
-  --border: #555;
-  --accent: #3794ff;
-  --control-bg: #f7f7f7;
+  --bg:#1e1e1e;--panel:#252526;--text:#f5f5f5;
+  --border:#555;--accent:#3794ff;--control-bg:#2a2a2a;
 }
-body {
-  margin: 0;
-  font-family: "Segoe UI", sans-serif;
-  background: var(--bg);
-  color: var(--text);
-  display: flex;
-  flex-direction: column;
-  height: 100vh;
-  overflow: hidden;
+body{
+  margin:0;font-family:"Segoe UI",sans-serif;
+  background:var(--bg);color:var(--text);
+  display:flex;flex-direction:column;height:100vh;overflow:hidden;
 }
-
-/* ===== Title ===== */
-#titlebar {
-  background: var(--accent);
-  color: #fff;
-  padding: 8px 16px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+/* ===== title & toolbar ===== */
+#titlebar{
+  background:var(--accent);color:#fff;
+  padding:8px 16px;display:flex;
+  justify-content:space-between;align-items:center;
 }
-#themeToggle {
-  cursor: pointer;
-  background: rgba(255,255,255,0.2);
-  padding: 4px 10px;
-  border-radius: 6px;
+#toolbar{
+  background:var(--panel);
+  border-bottom:1px solid var(--border);
+  display:flex;flex-wrap:wrap;gap:6px;padding:6px 8px;
 }
-#themeToggle:hover { background: rgba(255,255,255,0.35); }
-
-/* ===== Toolbar ===== */
-#toolbar {
-  background: var(--panel);
-  border-bottom: 1px solid var(--border);
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  padding: 6px 8px;
+#toolbar button,#toolbar select{
+  padding:6px 10px;border:1px solid var(--border);
+  background:var(--control-bg);cursor:pointer;
+  border-radius:4px;font-size:13px;
 }
-#toolbar button, #toolbar select {
-  padding: 6px 10px;
-  border: 1px solid var(--border);
-  background: var(--control-bg);
-  cursor: pointer;
-  border-radius: 4px;
-  font-size: 13px;
-}
-#toolbar button:hover {
-  background: var(--accent);
-  color: #fff;
-}
-
-/* ===== Workspace ===== */
-#workspace {
-  flex: 1;
-  display: flex;
-  overflow: hidden;
-}
-#canvasWrapper {
-  flex: 1;
-  overflow: scroll;
-  background: var(--panel);
-  cursor: grab;
-  position: relative;
-}
-#canvas {
-  position: absolute;
-  width: 8000px;
-  height: 8000px;
-  transform: translate(-4000px, -4000px);
-  background-size: 10px 10px;
+#toolbar button:hover{background:var(--accent);color:#fff;}
+#workspace{flex:1;display:flex;overflow:hidden;}
+/* ===== canvas ===== */
+#canvasWrapper{flex:1;overflow:scroll;background:var(--panel);
+  cursor:grab;position:relative;}
+#canvas{
+  position:absolute;width:8000px;height:8000px;
+  background-size:10px 10px;
   background-image:
-    linear-gradient(to right, var(--border) 1px, transparent 1px),
-    linear-gradient(to bottom, var(--border) 1px, transparent 1px);
+   linear-gradient(to right,var(--border)1px,transparent 1px),
+   linear-gradient(to bottom,var(--border)1px,transparent 1px);
 }
-.axis {
-  position: absolute;
-  background: red;
-  z-index: 1;
+.axis{position:absolute;background:red;z-index:1;}
+#axisX{height:1px;width:8000px;top:4000px;left:0;}
+#axisY{width:1px;height:8000px;left:4000px;top:0;}
+/* ===== controls ===== */
+.control{
+  position:absolute;border:1px solid var(--accent);
+  background:var(--control-bg);color:var(--text);
+  text-align:center;font-size:12px;border-radius:4px;
+  cursor:move;user-select:none;
+  box-shadow:0 1px 2px rgba(0,0,0,.1);
+  transition:box-shadow .2s,background .2s;
 }
-#axisX { height: 1px; width: 8000px; top: 4000px; left: 0; }
-#axisY { width: 1px; height: 8000px; left: 4000px; top: 0; }
+.control.selected{box-shadow:0 0 10px var(--accent);background:#e7f1ff;}
+.control.locked{border:1px dotted var(--accent);cursor:not-allowed;opacity:.9;}
+/* mô phỏng control thật */
+.ctrl-Button{padding-top:4px;background:linear-gradient(#fafafa,#dcdcdc);}
+.ctrl-Button:active{background:linear-gradient(#dcdcdc,#fafafa);}
+.ctrl-Edit{border:1px solid var(--border);text-align:left;padding:2px 4px;}
+.ctrl-ComboBox{display:flex;justify-content:space-between;align-items:center;
+  border:1px solid var(--border);padding:0 4px;}
+.ctrl-ComboBox::after{content:"▼";font-size:10px;}
+.ctrl-ListBox{border:1px solid var(--border);text-align:left;overflow:hidden;}
+.ctrl-ListBox div{padding:2px 4px;border-bottom:1px solid var(--border);}
+.ctrl-ListBox::-webkit-scrollbar{width:6px;}
+/* ===== property panel ===== */
+#propertyPanel{
+  width:260px;background:var(--panel);
+  border-left:1px solid var(--border);
+  padding:8px;overflow-y:auto;
+}
+#propertyPanel h3{margin:0 0 8px;border-bottom:1px solid var(--border);padding-bottom:4px;}
+.property{margin-bottom:8px;}
+.property label{font-size:12px;display:block;margin-bottom:3px;}
+.property input{width:100%;font-size:12px;padding:3px;
+  border:1px solid var(--border);border-radius:3px;
+  background:var(--control-bg);color:var(--text);}
+#stylePopup{
+  position:absolute;z-index:100;background:var(--panel);
+  border:1px solid var(--border);border-radius:6px;
+  padding:8px;width:230px;max-height:300px;overflow:auto;
+  display:none;box-shadow:0 2px 8px rgba(0,0,0,.2);
+}
+#stylePopup h4{margin:6px 0 4px;font-size:12px;border-bottom:1px solid var(--border);}
+#codePreview{
+  background:var(--panel);color:var(--text);
+  font-family:Consolas,monospace;font-size:12px;
+  border-top:1px solid var(--border);
+  padding:10px;height:200px;overflow:auto;white-space:pre;
+}
+.combo-dropdown { font-size:12px; box-shadow:0 2px 4px rgba(0,0,0,.2); }
 
-/* ===== Controls ===== */
-.control {
-  position: absolute;
-  border: 1px solid var(--accent);
-  background: var(--control-bg);
-  color: var(--text);
-  text-align: center;
-  font-size: 12px;
-  border-radius: 4px;
-  cursor: move;
-  user-select: none;
-  box-shadow: 0 1px 2px rgba(0,0,0,0.1);
-}
-.control.locked {
-  border: 1px dotted var(--accent);
-  cursor: not-allowed;
-  opacity: 1;
-}
-
-/* ===== Property Panel ===== */
-#propertyPanel {
-  width: 260px;
-  background: var(--panel);
-  border-left: 1px solid var(--border);
-  padding: 8px;
-  overflow-y: auto;
-}
-#propertyPanel h3 {
-  margin: 0 0 8px 0;
-  border-bottom: 1px solid var(--border);
-  padding-bottom: 4px;
-}
-.property { margin-bottom: 8px; }
-.property label {
-  font-size: 12px;
-  display: block;
-  margin-bottom: 3px;
-}
-.property input {
-  width: 100%;
-  font-size: 12px;
-  padding: 3px;
-  border: 1px solid var(--border);
-  border-radius: 3px;
-  background: var(--control-bg);
-  color: var(--text);
-}
-
-/* ===== Code Preview ===== */
-#codePreview {
-  background: var(--panel);
-  color: var(--text);
-  font-family: Consolas, monospace;
-  font-size: 12px;
-  border-top: 1px solid var(--border);
-  padding: 10px;
-  height: 200px;
-  overflow: auto;
-  white-space: pre;
-}
-
-/* ===== Popup ===== */
-#popup {
-  position: fixed;
-  bottom: 20px;
-  right: 20px;
-  background: var(--accent);
-  color: #fff;
-  padding: 8px 16px;
-  border-radius: 6px;
-  display: none;
-}
 </style>
 </head>
 <body>
-  <div id="titlebar">
-    <span>Win32 UI Builder Pro v7.4</span>
-    <div id="themeToggle">🌙 Dark</div>
-  </div>
+<div id="titlebar">
+  <span>Win32 UI Builder Pro v7.7.0</span>
+  <button id="themeToggle">🌙 Dark</button>
+</div>
 
-  <div id="toolbar">
-    <select id="controlSelect">
-      <option value="">➕ Thêm Control</option>
-      <option value="MainForm">MainForm</option>
-      <option value="Button">Button</option>
-      <option value="Edit">Edit</option>
-      <option value="Static">Static</option>
-      <option value="Menu">Menu</option>
-      <option value="MenuItem">MenuItem</option>
-      <option value="TabControl">TabControl</option>
-      <option value="TabPage">TabPage</option>
-      <option value="ListView">ListView</option>
-      <option value="TreeView">TreeView</option>
-      <option value="ProgressBar">ProgressBar</option>
-      <option value="DateTimePicker">DateTimePicker</option>
-      <option value="SysLink">SysLink</option>
-      <option value="CustomControl">CustomControl</option>
-    </select>
-     <button id="removeBtn">🗑 Xóa</button>
+<div id="toolbar">
+  <select id="controlSelect">
+    <option value="">➕ Thêm Control</option>
+    <option>MainForm</option><option>Button</option><option>Edit</option>
+    <option>Static</option><option>ComboBox</option><option>ListBox</option>
+    <option>CheckBox</option><option>RadioButton</option><option>GroupBox</option>
+    <option>TreeView</option><option>ListView</option><option>ProgressBar</option>
+    <option>DateTimePicker</option><option>TabControl</option><option>TabPage</option>
+    <option>SysLink</option><option>CustomControl</option>
+  </select>
+  <button id="removeBtn">🗑 Xóa</button>
   <button id="undoBtn">🔁 Undo</button>
   <button id="clearBtn">🧹 Xóa tất cả</button>
+  <button id="lockBtn">🔒 Khóa thiết kế</button>
   <button id="saveBtn">💾 Lưu layout</button>
   <button id="loadBtn">📂 Nạp layout</button>
-  <button id="exportBtn">📤 Xuất code</button>
-  <select id="langSelect">
-    <option value="cpp">C++</option>
-    <option value="c">C</option>
-    <option value="json">JSON</option>
-    <option value="python">Python GUI</option>
-  </select>
-  </div>
 
-  <div id="workspace">
-    <div id="canvasWrapper">
-      <div id="canvas">
-        <div id="axisX" class="axis"></div>
-        <div id="axisY" class="axis"></div>
-      </div>
-    </div>
-    <div id="propertyPanel">
-      <h3>Thuộc tính</h3>
-      <div id="propertyContent">Chọn control để chỉnh</div>
+  <select id="exportLang">
+  <option value="cpp">C++ (Win32)</option>
+  <option value="c">C (WinAPI)</option>
+  <option value="python">Python (Tkinter)</option>
+  <option value="json">JSON Layout</option>
+</select>
+    <button id="exportBtn">📤 Xuất Code</button>
+</div>
+
+<div id="workspace">
+  <div id="canvasWrapper">
+    <div id="canvas">
+ 
     </div>
   </div>
+  <div id="propertyPanel">
+    <h3>Thuộc tính</h3>
+    <div id="propertyContent">Chọn control để chỉnh</div>
+  </div>
+</div>
 
-  <div id="codePreview">// Code sẽ hiện ở đây...</div>
-  <div id="popup">✅ Đã sao chép!</div>
+<div id="codePreview">// Code sẽ hiện ở đây...</div>
+<div id="stylePopup"></div>
+<script>
+// ==============================
+// ⚙️ CORE LOGIC – Win32UIBuilderPro v7.6.3
+// ==============================
+const canvasWrapper=document.getElementById("canvasWrapper");
+const canvas=document.getElementById("canvas");
+const propertyContent=document.getElementById("propertyContent");
+const controlSelect=document.getElementById("controlSelect");
+const themeToggle=document.getElementById("themeToggle");
+const codePreview=document.getElementById("codePreview");
+const stylePopup=document.getElementById("stylePopup");
+const lockBtn=document.getElementById("lockBtn");
+
+let selectedControl=null,isDragging=false,offsetX=0,offsetY=0;
+let lockedDesign=false;
+const undoStack=[],MAX_UNDO=8;
+const CENTER=4000; // tâm canvas (0,0)
+
+// 🌙 Theme toggle
+themeToggle.onclick=()=>{
+  document.body.classList.toggle("dark");
+  const dark=document.body.classList.contains("dark");
+  themeToggle.textContent=dark?"☀️ Light":"🌙 Dark";
+  localStorage.setItem("theme",dark?"dark":"light");
+};
+window.addEventListener("load",()=>{
+  if(localStorage.getItem("theme")==="dark"){
+    document.body.classList.add("dark");
+    themeToggle.textContent="☀️ Light";
+  }
+  canvasWrapper.scrollLeft=CENTER-canvasWrapper.clientWidth/2;
+  canvasWrapper.scrollTop=CENTER-canvasWrapper.clientHeight/2;
+});
+
+// 🔒 Lock thiết kế
+lockBtn.onclick=()=>{
+  lockedDesign=!lockedDesign;
+  lockBtn.textContent=lockedDesign?"🔓 Mở khóa":"🔒 Khóa thiết kế";
+  document.querySelectorAll(".control").forEach(c=>{
+    c.classList.toggle("locked",lockedDesign);
+    c.style.pointerEvents=lockedDesign?"none":"auto";
+  });
+};
+
+// ➕ Thêm control
+controlSelect.onchange=()=>{
+  const type=controlSelect.value;if(!type)return;
+  addControl(type);controlSelect.value="";
+};
+function addControl(type, data = null) {
+  let el;
+
+  // 🎨 Tạo control thật tương ứng với Win32
+  switch (type) {
+    case "Button":
+      el = document.createElement("button");
+      el.textContent = data?.caption || "Button";
+      break;
+
+    case "CheckBox":
+      el = document.createElement("input");
+      el.type = "checkbox";
+      el.style.width = "16px";
+      el.style.height = "16px";
+      break;
+
+    case "RadioButton":
+      el = document.createElement("input");
+      el.type = "radio";
+      el.style.width = "16px";
+      el.style.height = "16px";
+      break;
+
+    case "Edit":
+      el = document.createElement("input");
+      el.type = "text";
+      el.value = data?.caption || "Edit text";
+      break;
+
+    case "Static":
+      el = document.createElement("label");
+      el.textContent = data?.caption || "Static";
+      break;
+
+    case "ComboBox":
+      el = document.createElement("select");
+      for (let i = 1; i <= 5; i++) {
+        const o = document.createElement("option");
+        o.textContent = "Item " + i;
+        el.appendChild(o);
+      }
+      break;
+
+    case "ListBox":
+      el = document.createElement("select");
+      el.multiple = true;
+      for (let i = 1; i <= 10; i++) {
+        const o = document.createElement("option");
+        o.textContent = "Item " + i;
+        el.appendChild(o);
+      }
+      el.size = 5;
+      break;
+
+    case "ProgressBar":
+      el = document.createElement("progress");
+      el.value = 30;
+      el.max = 100;
+      el.style.height = "16px";
+      break;
+
+    default:
+      el = document.createElement("div");
+      el.textContent = data?.caption || type;
+  }
+
+  // ⚙️ Thuộc tính control
+  el.className = "control ctrl-" + type;
+  el.dataset.type = type;
+  el.dataset.id = data?.id || `${type}_${Date.now()}`;
+  el.dataset.caption = data?.caption || type;
+  el.dataset.parent = data?.parent || "MainForm";
+  el.dataset.style = data?.style || "WS_VISIBLE|WS_CHILD";
+  el.dataset.locked = data?.locked || "false";
+
+  // 📏 Kích thước
+  if (!data) {
+    if (type === "CheckBox" || type === "RadioButton") {
+      el.style.width = "16px";
+      el.style.height = "16px";
+    } else if (type === "ProgressBar") {
+      el.style.width = "150px";
+      el.style.height = "16px";
+    } else if (type === "ComboBox") {
+      el.style.width = "140px";
+      el.style.height = "25px";
+    } else if (type === "ListBox") {
+      el.style.width = "160px";
+      el.style.height = "100px";
+    } else {
+      el.style.width = "120px";
+      el.style.height = "30px";
+    }
+  } else {
+    el.style.width = (data.w || 120) + "px";
+    el.style.height = (data.h || 30) + "px";
+  }
+
+  // 📍 Tính toạ độ trung tâm (0,0)
+  const center = 4000;
+  let x, y;
+  if (data) {
+    x = center + data.x;
+    y = center + data.y;
+  } else {
+    const viewX = canvasWrapper.scrollLeft + canvasWrapper.clientWidth / 2;
+    const viewY = canvasWrapper.scrollTop + canvasWrapper.clientHeight / 2;
+    x = viewX;
+    y = viewY;
+  }
+
+  el.style.position = "absolute";
+  el.style.left = x - parseInt(el.style.width) / 2 + "px";
+  el.style.top = y - parseInt(el.style.height) / 2 + "px";
+
+  // 📦 Thêm control vào canvas
+  canvas.appendChild(el);
+
+  // 🧩 Kéo thả
+  makeDraggable(el);
+
+  // 🔘 Chọn control vừa thêm
+  selectControl(el);
+
+  // 💾 Lưu trạng thái để Undo
+  saveState();
+
+  // 👁️ Cuộn camera đến control vừa tạo
+  canvasWrapper.scrollTo({
+    left: x - canvasWrapper.clientWidth / 2,
+    top: y - canvasWrapper.clientHeight / 2,
+    behavior: "smooth"
+  });
+}
+
+
+
+// 🎯 Drag
+function makeDraggable(ctrl){
+  ctrl.onmousedown=e=>{
+    if(e.button!==0||lockedDesign)return;
+    isDragging=true;offsetX=e.offsetX;offsetY=e.offsetY;
+    selectedControl=ctrl;selectControl(ctrl);
+    e.stopPropagation();
+  };
+}
+window.onmousemove=e=>{
+  if(isDragging&&selectedControl){
+    const rect=canvas.getBoundingClientRect();
+    const x=e.clientX-rect.left-offsetX;
+    const y=e.clientY-rect.top-offsetY;
+    selectedControl.style.left=x+"px";
+    selectedControl.style.top=y+"px";
+    updateProperties(selectedControl);
+  }
+};
+window.onmouseup=()=>{if(isDragging){isDragging=false;saveState();}};
+
+// 🧩 Property panel
+function selectControl(ctrl){
+  document.querySelectorAll(".control").forEach(c=>c.classList.remove("selected"));
+  ctrl.classList.add("selected");
+  selectedControl=ctrl;
+  updateProperties(ctrl);
+}
+function updateProperties(ctrl){
+  const id=ctrl.dataset.id,type=ctrl.dataset.type,caption=ctrl.dataset.caption,parent=ctrl.dataset.parent;
+  const style=ctrl.dataset.style;
+  // 🔹 hiển thị tọa độ quanh tâm
+  const x=parseInt(ctrl.style.left)-CENTER;
+  const y=parseInt(ctrl.style.top)-CENTER;
+  const w=parseInt(ctrl.style.width),h=parseInt(ctrl.style.height);
+
+  propertyContent.innerHTML=`
+  <div class='property'><label>ID:</label><input id='p_id' value='${id}'></div>
+  <div class='property'><label>Loại:</label><input value='${type}' disabled></div>
+  <div class='property'><label>Caption:</label><input id='p_caption' value='${caption}'></div>
+  <div class='property'><label>X:</label><input id='p_x' type='number' value='${x}'></div>
+  <div class='property'><label>Y:</label><input id='p_y' type='number' value='${y}'></div>
+  <div class='property'><label>Rộng:</label><input id='p_w' type='number' value='${w}'></div>
+  <div class='property'><label>Cao:</label><input id='p_h' type='number' value='${h}'></div>
+  <div class='property'><label>Style:</label><input id='p_style' value='${style}' readonly style='cursor:pointer;background:#eee;'></div>
+  <div class='property'><label>ParentID:</label><input id='p_parent' value='${parent}'></div>`;
+
+  document.getElementById("p_caption").oninput=e=>{
+    ctrl.dataset.caption=e.target.value;ctrl.textContent=e.target.value;
+  };
+  ["x","y","w","h"].forEach(k=>{
+    document.getElementById("p_"+k).oninput=e=>{
+      const val=parseInt(e.target.value)||0;
+      if(k==="x") ctrl.style.left=(CENTER+val)+"px";
+      else if(k==="y") ctrl.style.top=(CENTER+val)+"px";
+      else if(k==="w") ctrl.style.width=val+"px";
+      else ctrl.style.height=val+"px";
+    };
+  });
+  document.getElementById("p_style").onclick=e=>showStylePopup(ctrl,e.target);
+}
+
+// ⚙ Popup chọn style có tooltip tiếng Việt
+function showStylePopup(ctrl, input) {
+  const type = ctrl.dataset.type;
+
+  // 🧠 Giải thích tiếng Việt cho từng style
+  const explain = {
+    WS_VISIBLE: "Hiển thị control khi chạy chương trình.",
+    WS_CHILD: "Là control con bên trong cửa sổ chính.",
+    WS_BORDER: "Vẽ viền quanh control.",
+    WS_TABSTOP: "Cho phép nhận focus bằng phím Tab.",
+    BS_PUSHBUTTON: "Kiểu nút bấm thông thường.",
+    BS_DEFPUSHBUTTON: "Nút mặc định khi nhấn Enter (màu xanh).",
+    BS_CHECKBOX: "Tạo ô vuông chọn (checkbox).",
+    BS_AUTOCHECKBOX: "Checkbox tự động thay đổi trạng thái khi click.",
+    CBS_DROPDOWNLIST: "Combobox dạng danh sách thả xuống, không cho nhập tay.",
+    CBS_DROPDOWN: "Combobox có thể nhập thêm văn bản.",
+    CBS_SIMPLE: "Combobox luôn hiển thị danh sách.",
+    CBS_SORT: "Tự động sắp xếp danh sách combobox.",
+    LBS_NOTIFY: "Gửi thông điệp khi người dùng chọn dòng.",
+    LBS_SORT: "Sắp xếp nội dung listbox theo bảng chữ cái.",
+    LBS_MULTIPLESEL: "Cho phép chọn nhiều dòng (Ctrl + click).",
+    LBS_EXTENDEDSEL: "Chọn nhiều dòng bằng Shift hoặc Ctrl."
+  };
+
+  const ws = ["WS_VISIBLE", "WS_CHILD", "WS_BORDER", "WS_TABSTOP"];
+  const bs = ["BS_PUSHBUTTON", "BS_DEFPUSHBUTTON", "BS_CHECKBOX", "BS_AUTOCHECKBOX"];
+  const cbs = ["CBS_DROPDOWNLIST", "CBS_DROPDOWN", "CBS_SIMPLE", "CBS_SORT"];
+  const lbs = ["LBS_NOTIFY", "LBS_SORT", "LBS_MULTIPLESEL", "LBS_EXTENDEDSEL"];
+
+  let groups = [];
+  groups.push({ title: "🪟 Window Styles", items: ws });
+  if (["Button", "CheckBox", "RadioButton"].includes(type))
+    groups.push({ title: "🖱 Button Styles", items: bs });
+  if (type === "ComboBox") groups.push({ title: "📦 ComboBox Styles", items: cbs });
+  if (type === "ListBox") groups.push({ title: "📋 ListBox Styles", items: lbs });
+
+  // 🧩 Render popup
+  let html = "";
+  groups.forEach(g => {
+    html += `<h4>${g.title}</h4>`;
+    g.items.forEach(s => {
+      const checked = ctrl.dataset.style.includes(s) ? "checked" : "";
+      const tip = explain[s] || "Không có mô tả.";
+      html += `<label title="${tip}">
+                 <input type='checkbox' value='${s}' ${checked}> ${s}
+               </label><br>`;
+    });
+  });
+
+  stylePopup.innerHTML = html;
+  stylePopup.style.left = (input.getBoundingClientRect().left - 10) + "px";
+  stylePopup.style.top = (input.getBoundingClientRect().bottom + 4) + "px";
+  stylePopup.style.display = "block";
+
+  // 🪄 Khi người dùng tick chọn — cập nhật style & giao diện thật
+  stylePopup.querySelectorAll("input[type=checkbox]").forEach(cb => {
+    cb.onchange = () => {
+      const selected = [...stylePopup.querySelectorAll("input:checked")].map(x => x.value);
+      ctrl.dataset.style = selected.join("|");
+      input.value = ctrl.dataset.style;
+
+      // ⚙️ Áp dụng trực tiếp style thực tế
+      applyVisualStyle(ctrl, selected);
+    };
+  });
+
+  // đóng popup khi click ra ngoài
+  document.onclick = (e) => {
+    if (!stylePopup.contains(e.target) && e.target !== input)
+      stylePopup.style.display = "none";
+  };
+}
+// 🎨 Áp dụng thay đổi giao diện thật dựa trên style tick chọn
+function applyVisualStyle(ctrl, selected) {
+  const type = ctrl.dataset.type;
+
+  // Reset lại về mặc định
+  ctrl.disabled = false;
+  ctrl.style.border = "";
+  ctrl.style.background = "";
+  ctrl.style.color = "";
+  ctrl.style.fontWeight = "";
+  ctrl.removeAttribute("multiple");
+
+  // 🔘 Button Styles
+  if (selected.includes("BS_DEFPUSHBUTTON")) {
+    ctrl.style.background = "#0078D7";
+    ctrl.style.color = "white";
+    ctrl.style.fontWeight = "600";
+  }
+
+  // ☑️ CheckBox
+  if (selected.includes("BS_CHECKBOX") || selected.includes("BS_AUTOCHECKBOX")) {
+    if (ctrl.tagName !== "INPUT" || ctrl.type !== "checkbox") {
+      const newEl = document.createElement("input");
+      newEl.type = "checkbox";
+      newEl.className = ctrl.className;
+      newEl.dataset = ctrl.dataset;
+      ctrl.replaceWith(newEl);
+      selectedControl = newEl;
+    }
+  }
+
+  // 📦 ComboBox
+  if (type === "ComboBox") {
+    if (selected.includes("CBS_DROPDOWNLIST")) {
+      ctrl.disabled = true;
+    } else if (selected.includes("CBS_SORT")) {
+      const opts = [...ctrl.querySelectorAll("option")].map(o => o.textContent).sort();
+      ctrl.innerHTML = "";
+      opts.forEach(txt => {
+        const o = document.createElement("option");
+        o.textContent = txt;
+        ctrl.appendChild(o);
+      });
+    }
+  }
+
+  // 📋 ListBox
+  if (type === "ListBox") {
+    if (selected.includes("LBS_SORT")) {
+      const opts = [...ctrl.querySelectorAll("option")].map(o => o.textContent).sort();
+      ctrl.innerHTML = "";
+      opts.forEach(txt => {
+        const o = document.createElement("option");
+        o.textContent = txt;
+        ctrl.appendChild(o);
+      });
+    }
+    if (selected.includes("LBS_MULTIPLESEL") || selected.includes("LBS_EXTENDEDSEL")) {
+      ctrl.multiple = true;
+    } else {
+      ctrl.removeAttribute("multiple");
+    }
+  }
+}
+
+
+
+
+canvas.addEventListener("click",e=>{
+  const combo=e.target.closest(".ctrl-ComboBox");
+  if(combo){
+    e.stopPropagation();
+    const exist=combo.querySelector(".combo-dropdown");
+    if(exist){exist.remove();return;}
+    const drop=document.createElement("div");
+    drop.className="combo-dropdown";
+    drop.style.position="absolute";
+    drop.style.left="0";drop.style.top="100%";
+    drop.style.width="100%";
+    drop.style.background="#fff";
+    drop.style.border="1px solid #aaa";
+    drop.style.zIndex="9999";
+    for(let i=1;i<=5;i++){
+      const item=document.createElement("div");
+      item.textContent="Item "+i;
+      item.style.padding="3px 5px";
+      item.style.cursor="pointer";
+      item.onmouseenter=()=>item.style.background="#0078D7",item.style.color="#fff";
+      item.onmouseleave=()=>item.style.background="",item.style.color="";
+      item.onclick=()=>{
+        combo.textContent=item.textContent;
+        drop.remove();
+      };
+      drop.appendChild(item);
+    }
+    combo.appendChild(drop);
+  }
+});
+// 💾 Layout quanh tâm 0,0
+function getLayout(){
+  const arr=[];
+  canvas.querySelectorAll(".control").forEach(c=>{
+    arr.push({
+      id:c.dataset.id,type:c.dataset.type,caption:c.dataset.caption,
+      x:parseInt(c.style.left)-CENTER,
+      y:parseInt(c.style.top)-CENTER,
+      w:parseInt(c.style.width),h:parseInt(c.style.height),
+      parent:c.dataset.parent,style:c.dataset.style
+    });
+  });
+  return arr;
+}
+function setLayout(data){
+  canvas.innerHTML='<div id="axisX" class="axis" style="top:4000px;width:8000px;height:1px;left:0;background:red"></div><div id="axisY" class="axis" style="left:4000px;width:1px;height:8000px;top:0;background:red"></div>';
+  data.forEach(d=>addControl(d.type,d));
+}
+function saveState(){undoStack.push(JSON.stringify(getLayout()));if(undoStack.length>MAX_UNDO)undoStack.shift();}
+document.getElementById("undoBtn").onclick=()=>{if(undoStack.length<2)return;undoStack.pop();setLayout(JSON.parse(undoStack.at(-1)));};
+document.getElementById("clearBtn").onclick=()=>{if(confirm("Xóa toàn bộ layout?")){canvas.innerHTML="";saveState();}};
+document.getElementById("saveBtn").onclick=()=>{const blob=new Blob([JSON.stringify(getLayout(),null,2)],{type:"text/plain"});const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="layout_v763.txt";a.click();};
+document.getElementById("loadBtn").onclick=()=>{const inp=document.createElement("input");inp.type="file";inp.accept=".txt,.json";inp.onchange=e=>{const f=e.target.files[0];const r=new FileReader();r.onload=ev=>setLayout(JSON.parse(ev.target.result));r.readAsText(f);};inp.click();};
+document.getElementById("removeBtn").onclick=()=>{if(selectedControl){selectedControl.remove();selectedControl=null;propertyContent.textContent="Chọn control để chỉnh";saveState();}};
+
+// 📤 Xuất C++ code đẹp
+document.getElementById("exportBtn").onclick = () => {
+  const layout = getLayout();
+  const lang = document.getElementById("exportLang").value;
+  let out = "";
+
+  if (lang === "cpp") {
+    out += `// ========== Generated by Win32 UI Builder Pro v7.7.0 ==========\n`;
+    out += `#include <windows.h>\n\n`;
+    out += `void CreateUI(HWND hwnd, HINSTANCE hInst){\n`;
+    out += `    HFONT hFont = (HFONT)GetStockObject(DEFAULT_GUI_FONT);\n`;
+    layout.forEach((c, i) => {
+      if (c.type === "MainForm") return;
+      out += `\n    // ${c.type}\n`;
+      out += `    HWND h${c.id}=CreateWindowW(\n`;
+      out += `        L"${c.type}", L"${c.caption}",\n`;
+      out += `        ${c.style || "WS_VISIBLE|WS_CHILD"},\n`;
+      out += `        ${c.x}, ${c.y}, ${c.w}, ${c.h},\n`;
+      out += `        hwnd, (HMENU)${1000 + i}, hInst, NULL);\n`;
+      out += `    SendMessage(h${c.id}, WM_SETFONT, (WPARAM)hFont, TRUE);\n`;
+    });
+    out += `\n}\n`;
+
+  } else if (lang === "c") {
+    out += `/* ========== Generated by Win32 UI Builder Pro v7.7.0 ========== */\n`;
+    out += `#include <windows.h>\n\n`;
+    out += `void CreateUI(HWND hwnd, HINSTANCE hInst){\n`;
+    out += `    HFONT hFont = (HFONT)GetStockObject(DEFAULT_GUI_FONT);\n`;
+    layout.forEach((c, i) => {
+      if (c.type === "MainForm") return;
+      out += `\n    // ${c.type}\n`;
+      out += `    HWND h${c.id}=CreateWindow(\n`;
+      out += `        "${c.type}", "${c.caption}",\n`;
+      out += `        ${c.style || "WS_VISIBLE|WS_CHILD"},\n`;
+      out += `        ${c.x}, ${c.y}, ${c.w}, ${c.h},\n`;
+      out += `        hwnd, (HMENU)${1000 + i}, hInst, NULL);\n`;
+      out += `    SendMessage(h${c.id}, WM_SETFONT, (WPARAM)hFont, TRUE);\n`;
+    });
+    out += `\n}\n`;
+
+  } else if (lang === "python") {
+    out += `# ========== Generated by Win32 UI Builder Pro v7.7.0 ==========\n`;
+    out += `import tkinter as tk\n\n`;
+    out += `def create_ui(root):\n`;
+    out += `    font=('Segoe UI', 9)\n`;
+    layout.forEach(c => {
+      if (c.type === "MainForm") return;
+      const name = c.id.replace(/[^a-zA-Z0-9]/g, "_");
+      if (c.type === "Button") out += `    ${name}=tk.Button(root,text='${c.caption}',font=font)\n`;
+      else if (c.type === "Edit") out += `    ${name}=tk.Entry(root,font=font)\n`;
+      else if (c.type === "Static") out += `    ${name}=tk.Label(root,text='${c.caption}',font=font)\n`;
+      else if (c.type === "CheckBox") out += `    ${name}=tk.Checkbutton(root,text='${c.caption}',font=font)\n`;
+      else if (c.type === "ComboBox") out += `    ${name}=tk.OptionMenu(root, tk.StringVar(), 'Item 1', 'Item 2', 'Item 3')\n`;
+      else if (c.type === "ListBox") out += `    ${name}=tk.Listbox(root)\n`;
+      else if (c.type === "ProgressBar") out += `    ${name}=tk.Scale(root, from_=0, to=100, orient='horizontal')\n`;
+      else out += `    ${name}=tk.Label(root,text='${c.type}',font=font)\n`;
+      out += `    ${name}.place(x=${c.x}, y=${c.y}, width=${c.w}, height=${c.h})\n`;
+    });
+    out += `\nif __name__ == "__main__":\n`;
+    out += `    root=tk.Tk()\n`;
+    out += `    root.geometry("800x600")\n`;
+    out += `    create_ui(root)\n`;
+    out += `    root.mainloop()\n`;
+
+  } else if (lang === "json") {
+    out = JSON.stringify(layout, null, 2);
+  }
+
+  // 🧾 Hiển thị ra khung code preview
+  codePreview.textContent = out;
+
+  // 📁 Tự động tải file xuất về
+
+};
+
+
+// click ngoài canvas bỏ chọn
+canvas.onclick=e=>{
+  if(e.target===canvas){
+    selectedControl=null;
+    document.querySelectorAll(".control").forEach(c=>c.classList.remove("selected"));
+    propertyContent.textContent="Chọn control để chỉnh";
+  }
+};
+</script>
+
 </body>
 </html>
-<script>
-// =============================
-// 🧠 PHẦN 2 – CORE LOGIC V7.4
-// =============================
-
-// Các phần tử chính
-const canvasWrapper = document.getElementById("canvasWrapper");
-const canvas = document.getElementById("canvas");
-const propertyContent = document.getElementById("propertyContent");
-const controlSelect = document.getElementById("controlSelect");
-const themeToggle = document.getElementById("themeToggle");
-const popup = document.getElementById("popup");
-
-let selectedControl = null;
-let isDragging = false;
-let offsetX = 0, offsetY = 0;
-let panning = false, panStart = {x:0,y:0}, scrollStart = {x:0,y:0};
-const undoStack = [];
-const MAX_UNDO = 5;
-
-// =============================
-// 🌙 DARK / LIGHT MODE
-// =============================
-themeToggle.addEventListener("click", () => {
-  document.body.classList.toggle("dark");
-  const dark = document.body.classList.contains("dark");
-  themeToggle.textContent = dark ? "☀️ Light" : "🌙 Dark";
-  localStorage.setItem("theme", dark ? "dark" : "light");
-});
-window.addEventListener("load",()=>{
-  if(localStorage.getItem("theme")==="dark"){
-    document.body.classList.add("dark");
-    themeToggle.textContent="☀️ Light";
-  }
-});
-
-// =============================
-// 📦 TẠO CONTROL MỚI
-// =============================
-controlSelect.addEventListener("change", ()=>{
-  const type = controlSelect.value;
-  if(!type) return;
-  addControl(type);
-  controlSelect.value="";
-});
-
-function addControl(type, data=null){
-  const c = document.createElement("div");
-  c.className = "control";
-  c.dataset.type = type;
-  c.dataset.id = data?.id || `${type}_${Date.now()}`;
-  c.dataset.caption = data?.caption || type;
-  c.dataset.locked = data?.locked || "false";
-  c.dataset.parent = data?.parent || "MainForm";
-  c.style.width = (data?.w || 120)+"px";
-  c.style.height = (data?.h || 30)+"px";
-  c.style.left = (data?.x || 0)+"px";
-  c.style.top = (data?.y || 0)+"px";
-  c.textContent = c.dataset.caption;
-
-  // TabControl tự tạo 3 TabPage
-  if(type==="TabControl"){
-    for(let i=1;i<=3;i++){
-      const tab = {
-        id:`TabPage_${Date.now()}_${i}`,
-        type:"TabPage",
-        caption:`Page${i}`,
-        parent:c.dataset.id,
-        x:8,y:24,w:200,h:150
-      };
-      addControl("TabPage", tab);
-    }
-  }
-
-  makeDraggable(c);
-  canvas.appendChild(c);
-  selectControl(c);
-  saveState();
-}
-
-// =============================
-// 🎯 KÉO THẢ & SNAP GRID
-// =============================
-function makeDraggable(ctrl){
-  ctrl.addEventListener("mousedown", e=>{
-    if(e.button===1 || e.button===2) return; // chuột giữa/phải bỏ qua
-    if(ctrl.dataset.locked==="true") return;
-    isDragging=true;
-    selectedControl=ctrl;
-    selectControl(ctrl);
-    offsetX=e.offsetX; offsetY=e.offsetY;
-    e.stopPropagation();
-  });
-
-  window.addEventListener("mousemove", e=>{
-    if(isDragging && selectedControl){
-      const rect = canvas.getBoundingClientRect();
-      let x = e.clientX - rect.left - offsetX;
-      let y = e.clientY - rect.top - offsetY;
-      x=Math.round(x/8)*8; y=Math.round(y/8)*8;
-      selectedControl.style.left = x+"px";
-      selectedControl.style.top = y+"px";
-      updateProperties(selectedControl);
-    }
-  });
-  window.addEventListener("mouseup", ()=>{
-    if(isDragging){ isDragging=false; saveState(); }
-  });
-}
-
-// =============================
-// 🧭 PANNING CANVAS (chuột phải)
-// =============================
-canvasWrapper.addEventListener("mousedown", e=>{
-  if(e.button===2){
-    panning=true;
-    panStart={x:e.clientX,y:e.clientY};
-    scrollStart={x:canvasWrapper.scrollLeft,y:canvasWrapper.scrollTop};
-    canvasWrapper.style.cursor="grabbing";
-  }
-});
-window.addEventListener("mouseup", ()=>{ panning=false; canvasWrapper.style.cursor="grab"; });
-window.addEventListener("mousemove", e=>{
-  if(panning){
-    canvasWrapper.scrollLeft = scrollStart.x - (e.clientX - panStart.x);
-    canvasWrapper.scrollTop = scrollStart.y - (e.clientY - panStart.y);
-  }
-});
-canvasWrapper.addEventListener("contextmenu", e=>e.preventDefault());
-
-// =============================
-// 📋 PANEL THUỘC TÍNH
-// =============================
-function selectControl(ctrl){
-  document.querySelectorAll(".control").forEach(c=>c.style.outline="none");
-  ctrl.style.outline=`2px solid var(--accent)`;
-  selectedControl=ctrl;
-  updateProperties(ctrl);
-}
-
-function updateProperties(ctrl){
-  const id=ctrl.dataset.id, type=ctrl.dataset.type, caption=ctrl.dataset.caption, parent=ctrl.dataset.parent;
-  const x=parseInt(ctrl.style.left), y=parseInt(ctrl.style.top), w=parseInt(ctrl.style.width), h=parseInt(ctrl.style.height);
-  const locked=ctrl.dataset.locked==="true";
-  propertyContent.innerHTML=`
-  <div class='property'><label>ID:</label><input id='p_id' value='${id}'></div>
-  <div class='property'><label>Loại:</label><input value='${type}' disabled></div>
-  <div class='property'><label>Caption:</label><input id='p_caption' value='${caption}'></div>
-  <div class='property'><label>X:</label><input id='p_x' type='number' value='${x}'></div>
-  <div class='property'><label>Y:</label><input id='p_y' type='number' value='${y}'></div>
-  <div class='property'><label>Rộng:</label><input id='p_w' type='number' value='${w}'></div>
-  <div class='property'><label>Cao:</label><input id='p_h' type='number' value='${h}'></div>
-  <div class='property'><label>ParentID:</label><input id='p_parent' value='${parent}'></div>
-  <div class='property'><label><input id='p_locked' type='checkbox' ${locked?"checked":""}> Khóa control</label></div>
-  `;
-  document.getElementById("p_caption").addEventListener("input",e=>{
-    ctrl.dataset.caption=e.target.value; ctrl.textContent=e.target.value;
-  });
-  ["x","y","w","h"].forEach(k=>{
-    document.getElementById("p_"+k).addEventListener("input",e=>{
-      ctrl.style[k==="x"?"left":k==="y"?"top":k==="w"?"width":"height"] = e.target.value+"px";
-    });
-  });
-  document.getElementById("p_locked").addEventListener("change",e=>{
-    ctrl.dataset.locked=e.target.checked?"true":"false";
-    ctrl.classList.toggle("locked",e.target.checked);
-  });
-}
-
-// =============================
-// 💾 LƯU / NẠP / UNDO / CLEAR
-// =============================
-function getLayout(){
-  const arr=[];
-  canvas.querySelectorAll(".control").forEach(c=>{
-    arr.push({
-      id:c.dataset.id, type:c.dataset.type, caption:c.dataset.caption,
-      x:parseInt(c.style.left), y:parseInt(c.style.top),
-      w:parseInt(c.style.width), h:parseInt(c.style.height),
-      locked:c.dataset.locked==="true", parent:c.dataset.parent
-    });
-  });
-  return arr;
-}
-function setLayout(data){
-  canvas.innerHTML='<div id="axisX" class="axis" style="top:4000px;width:8000px;height:1px;left:0;background:red"></div><div id="axisY" class="axis" style="left:4000px;width:1px;height:8000px;top:0;background:red"></div>';
-  data.forEach(d=>addControl(d.type,d));
-}
-function saveState(){
-  undoStack.push(JSON.stringify(getLayout()));
-  if(undoStack.length>MAX_UNDO) undoStack.shift();
-}
-document.getElementById("undoBtn").onclick=()=>{
-  if(undoStack.length<2) return;
-  undoStack.pop();
-  setLayout(JSON.parse(undoStack[undoStack.length-1]));
-};
-document.getElementById("clearBtn").onclick=()=>{
-  if(!confirm("Xóa toàn bộ layout?")) return;
-  canvas.innerHTML="";
-  saveState();
-};
-document.getElementById("saveBtn").onclick=()=>{
-  const blob=new Blob([JSON.stringify(getLayout(),null,2)],{type:"text/plain"});
-  const a=document.createElement("a");
-  a.href=URL.createObjectURL(blob); a.download="layout_v74.txt"; a.click();
-};
-document.getElementById("loadBtn").onclick=()=>{
-  const inp=document.createElement("input"); inp.type="file"; inp.accept=".txt,.json";
-  inp.onchange=e=>{
-    const f=e.target.files[0]; const r=new FileReader();
-    r.onload=ev=>{ setLayout(JSON.parse(ev.target.result)); };
-    r.readAsText(f);
-  };
-  inp.click();
-};
-document.getElementById("removeBtn").onclick=()=>{
-  if(selectedControl){ selectedControl.remove(); selectedControl=null; propertyContent.textContent="Chọn control để chỉnh"; saveState(); }
-};
-
-// =============================
-// 🪟 MENU / TABCONTROL LOGIC
-// =============================
-
-// Khi click vào Menu hoặc TabControl → chỉ hiện control con thuộc vùng đó
-canvas.addEventListener("click", e=>{
-  const t=e.target.closest(".control");
-  if(!t) return;
-  const type=t.dataset.type;
-  if(type==="Menu"||type==="TabControl"||type==="TabPage"||type==="MenuItem"){
-    switchContainer(t);
-    e.stopPropagation();
-  } else selectControl(t);
-});
-
-function switchContainer(container){
-  const id=container.dataset.id;
-  document.querySelectorAll(".control").forEach(c=>{
-    if(c.dataset.parent===id || c.dataset.id===id){
-      c.style.display="block";
-    } else if(c.dataset.parent!=="MainForm"){
-      c.style.display="none";
-    }
-  });
-  selectControl(container);
-}
-
-// =============================
-// 💬 CLICK NGOÀI CANVAS
-// =============================
-canvas.addEventListener("click", e=>{
-  if(e.target===canvas){
-    selectedControl=null;
-    document.querySelectorAll(".control").forEach(c=>c.style.outline="none");
-    propertyContent.textContent="Chọn control để chỉnh";
-  }
-});
-</script>
-<script>
-// =============================
-// 🧠 PHẦN 2 – CORE LOGIC V7.4
-// =============================
-
-// Các phần tử chính
-const canvasWrapper = document.getElementById("canvasWrapper");
-const canvas = document.getElementById("canvas");
-const propertyContent = document.getElementById("propertyContent");
-const controlSelect = document.getElementById("controlSelect");
-const themeToggle = document.getElementById("themeToggle");
-const popup = document.getElementById("popup");
-
-let selectedControl = null;
-let isDragging = false;
-let offsetX = 0, offsetY = 0;
-let panning = false, panStart = {x:0,y:0}, scrollStart = {x:0,y:0};
-const undoStack = [];
-const MAX_UNDO = 5;
-
-// =============================
-// 🌙 DARK / LIGHT MODE
-// =============================
-themeToggle.addEventListener("click", () => {
-  document.body.classList.toggle("dark");
-  const dark = document.body.classList.contains("dark");
-  themeToggle.textContent = dark ? "☀️ Light" : "🌙 Dark";
-  localStorage.setItem("theme", dark ? "dark" : "light");
-});
-window.addEventListener("load",()=>{
-  if(localStorage.getItem("theme")==="dark"){
-    document.body.classList.add("dark");
-    themeToggle.textContent="☀️ Light";
-  }
-});
-
-// =============================
-// 📦 TẠO CONTROL MỚI
-// =============================
-controlSelect.addEventListener("change", ()=>{
-  const type = controlSelect.value;
-  if(!type) return;
-  addControl(type);
-  controlSelect.value="";
-});
-
-function addControl(type, data=null){
-  const c = document.createElement("div");
-  c.className = "control";
-  c.dataset.type = type;
-  c.dataset.id = data?.id || `${type}_${Date.now()}`;
-  c.dataset.caption = data?.caption || type;
-  c.dataset.locked = data?.locked || "false";
-  c.dataset.parent = data?.parent || "MainForm";
-  c.style.width = (data?.w || 120)+"px";
-  c.style.height = (data?.h || 30)+"px";
-  c.style.left = (data?.x || 0)+"px";
-  c.style.top = (data?.y || 0)+"px";
-  c.textContent = c.dataset.caption;
-
-  // TabControl tự tạo 3 TabPage
-  if(type==="TabControl"){
-    for(let i=1;i<=3;i++){
-      const tab = {
-        id:`TabPage_${Date.now()}_${i}`,
-        type:"TabPage",
-        caption:`Page${i}`,
-        parent:c.dataset.id,
-        x:8,y:24,w:200,h:150
-      };
-      addControl("TabPage", tab);
-    }
-  }
-
-  makeDraggable(c);
-  canvas.appendChild(c);
-  selectControl(c);
-  saveState();
-}
-
-// =============================
-// 🎯 KÉO THẢ & SNAP GRID
-// =============================
-function makeDraggable(ctrl){
-  ctrl.addEventListener("mousedown", e=>{
-    if(e.button===1 || e.button===2) return; // chuột giữa/phải bỏ qua
-    if(ctrl.dataset.locked==="true") return;
-    isDragging=true;
-    selectedControl=ctrl;
-    selectControl(ctrl);
-    offsetX=e.offsetX; offsetY=e.offsetY;
-    e.stopPropagation();
-  });
-
-  window.addEventListener("mousemove", e=>{
-    if(isDragging && selectedControl){
-      const rect = canvas.getBoundingClientRect();
-      let x = e.clientX - rect.left - offsetX;
-      let y = e.clientY - rect.top - offsetY;
-      x=Math.round(x/8)*8; y=Math.round(y/8)*8;
-      selectedControl.style.left = x+"px";
-      selectedControl.style.top = y+"px";
-      updateProperties(selectedControl);
-    }
-  });
-  window.addEventListener("mouseup", ()=>{
-    if(isDragging){ isDragging=false; saveState(); }
-  });
-}
-
-// =============================
-// 🧭 PANNING CANVAS (chuột phải)
-// =============================
-canvasWrapper.addEventListener("mousedown", e=>{
-  if(e.button===2){
-    panning=true;
-    panStart={x:e.clientX,y:e.clientY};
-    scrollStart={x:canvasWrapper.scrollLeft,y:canvasWrapper.scrollTop};
-    canvasWrapper.style.cursor="grabbing";
-  }
-});
-window.addEventListener("mouseup", ()=>{ panning=false; canvasWrapper.style.cursor="grab"; });
-window.addEventListener("mousemove", e=>{
-  if(panning){
-    canvasWrapper.scrollLeft = scrollStart.x - (e.clientX - panStart.x);
-    canvasWrapper.scrollTop = scrollStart.y - (e.clientY - panStart.y);
-  }
-});
-canvasWrapper.addEventListener("contextmenu", e=>e.preventDefault());
-
-// =============================
-// 📋 PANEL THUỘC TÍNH
-// =============================
-function selectControl(ctrl){
-  document.querySelectorAll(".control").forEach(c=>c.style.outline="none");
-  ctrl.style.outline=`2px solid var(--accent)`;
-  selectedControl=ctrl;
-  updateProperties(ctrl);
-}
-
-function updateProperties(ctrl){
-  const id=ctrl.dataset.id, type=ctrl.dataset.type, caption=ctrl.dataset.caption, parent=ctrl.dataset.parent;
-  const x=parseInt(ctrl.style.left), y=parseInt(ctrl.style.top), w=parseInt(ctrl.style.width), h=parseInt(ctrl.style.height);
-  const locked=ctrl.dataset.locked==="true";
-  propertyContent.innerHTML=`
-  <div class='property'><label>ID:</label><input id='p_id' value='${id}'></div>
-  <div class='property'><label>Loại:</label><input value='${type}' disabled></div>
-  <div class='property'><label>Caption:</label><input id='p_caption' value='${caption}'></div>
-  <div class='property'><label>X:</label><input id='p_x' type='number' value='${x}'></div>
-  <div class='property'><label>Y:</label><input id='p_y' type='number' value='${y}'></div>
-  <div class='property'><label>Rộng:</label><input id='p_w' type='number' value='${w}'></div>
-  <div class='property'><label>Cao:</label><input id='p_h' type='number' value='${h}'></div>
-  <div class='property'><label>ParentID:</label><input id='p_parent' value='${parent}'></div>
-  <div class='property'><label><input id='p_locked' type='checkbox' ${locked?"checked":""}> Khóa control</label></div>
-  `;
-  document.getElementById("p_caption").addEventListener("input",e=>{
-    ctrl.dataset.caption=e.target.value; ctrl.textContent=e.target.value;
-  });
-  ["x","y","w","h"].forEach(k=>{
-    document.getElementById("p_"+k).addEventListener("input",e=>{
-      ctrl.style[k==="x"?"left":k==="y"?"top":k==="w"?"width":"height"] = e.target.value+"px";
-    });
-  });
-  document.getElementById("p_locked").addEventListener("change",e=>{
-    ctrl.dataset.locked=e.target.checked?"true":"false";
-    ctrl.classList.toggle("locked",e.target.checked);
-  });
-}
-
-// =============================
-// 💾 LƯU / NẠP / UNDO / CLEAR
-// =============================
-function getLayout(){
-  const arr=[];
-  canvas.querySelectorAll(".control").forEach(c=>{
-    arr.push({
-      id:c.dataset.id, type:c.dataset.type, caption:c.dataset.caption,
-      x:parseInt(c.style.left), y:parseInt(c.style.top),
-      w:parseInt(c.style.width), h:parseInt(c.style.height),
-      locked:c.dataset.locked==="true", parent:c.dataset.parent
-    });
-  });
-  return arr;
-}
-function setLayout(data){
-  canvas.innerHTML='<div id="axisX" class="axis" style="top:4000px;width:8000px;height:1px;left:0;background:red"></div><div id="axisY" class="axis" style="left:4000px;width:1px;height:8000px;top:0;background:red"></div>';
-  data.forEach(d=>addControl(d.type,d));
-}
-function saveState(){
-  undoStack.push(JSON.stringify(getLayout()));
-  if(undoStack.length>MAX_UNDO) undoStack.shift();
-}
-document.getElementById("undoBtn").onclick=()=>{
-  if(undoStack.length<2) return;
-  undoStack.pop();
-  setLayout(JSON.parse(undoStack[undoStack.length-1]));
-};
-document.getElementById("clearBtn").onclick=()=>{
-  if(!confirm("Xóa toàn bộ layout?")) return;
-  canvas.innerHTML="";
-  saveState();
-};
-document.getElementById("saveBtn").onclick=()=>{
-  const blob=new Blob([JSON.stringify(getLayout(),null,2)],{type:"text/plain"});
-  const a=document.createElement("a");
-  a.href=URL.createObjectURL(blob); a.download="layout_v74.txt"; a.click();
-};
-document.getElementById("loadBtn").onclick=()=>{
-  const inp=document.createElement("input"); inp.type="file"; inp.accept=".txt,.json";
-  inp.onchange=e=>{
-    const f=e.target.files[0]; const r=new FileReader();
-    r.onload=ev=>{ setLayout(JSON.parse(ev.target.result)); };
-    r.readAsText(f);
-  };
-  inp.click();
-};
-document.getElementById("removeBtn").onclick=()=>{
-  if(selectedControl){ selectedControl.remove(); selectedControl=null; propertyContent.textContent="Chọn control để chỉnh"; saveState(); }
-};
-
-// =============================
-// 🪟 MENU / TABCONTROL LOGIC
-// =============================
-
-// Khi click vào Menu hoặc TabControl → chỉ hiện control con thuộc vùng đó
-canvas.addEventListener("click", e=>{
-  const t=e.target.closest(".control");
-  if(!t) return;
-  const type=t.dataset.type;
-  if(type==="Menu"||type==="TabControl"||type==="TabPage"||type==="MenuItem"){
-    switchContainer(t);
-    e.stopPropagation();
-  } else selectControl(t);
-});
-
-function switchContainer(container){
-  const id=container.dataset.id;
-  document.querySelectorAll(".control").forEach(c=>{
-    if(c.dataset.parent===id || c.dataset.id===id){
-      c.style.display="block";
-    } else if(c.dataset.parent!=="MainForm"){
-      c.style.display="none";
-    }
-  });
-  selectControl(container);
-}
-
-// =============================
-// 💬 CLICK NGOÀI CANVAS
-// =============================
-canvas.addEventListener("click", e=>{
-  if(e.target===canvas){
-    selectedControl=null;
-    document.querySelectorAll(".control").forEach(c=>c.style.outline="none");
-    propertyContent.textContent="Chọn control để chỉnh";
-  }
-});
-</script>
