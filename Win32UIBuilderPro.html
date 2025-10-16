@@ -521,3 +521,154 @@ canvas.addEventListener("click", ()=>{
 });
 </script>
 
+<script>
+// ======================================================
+// 🧠 PHẦN XUẤT CODE & LIVE PREVIEW
+// ======================================================
+
+const codePreview = document.getElementById("codePreview");
+const langSelect = document.getElementById("langSelect");
+const exportBtn = document.getElementById("exportBtn");
+
+function updateCodePreview() {
+  const layout = getLayout();
+  const lang = langSelect.value;
+  let code = generateHeader(lang);
+
+  if (lang === "cpp" || lang === "c") {
+    code += generateWin32Code(layout, lang);
+  } else if (lang === "json") {
+    code += JSON.stringify(layout, null, 2);
+  } else if (lang === "python") {
+    code += generatePythonCode(layout);
+  }
+
+  codePreview.textContent = code;
+}
+
+// 🧩 Header tự động
+function generateHeader(lang) {
+  const now = new Date().toLocaleString();
+  const langName = (lang === "cpp" ? "C++" : lang === "c" ? "C" : lang === "json" ? "JSON Layout" : "Python GUI");
+  return `// ======================================================\n// Win32 UI Builder Pro v6 Export\n// Generated: ${now}\n// Language: ${langName}\n// ======================================================\n\n`;
+}
+
+// 🧱 Sinh code Win32 API (C/C++)
+function generateWin32Code(layout, lang) {
+  let code = "";
+  const isCpp = lang === "cpp";
+  code += "#include <windows.h>\n\n";
+  code += "LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);\n\n";
+  code += "int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR, int nCmdShow) {\n";
+  code += "    WNDCLASS wc = {0};\n";
+  code += "    wc.lpfnWndProc = WndProc;\n";
+  code += "    wc.hInstance = hInstance;\n";
+  code += "    wc.lpszClassName = L\"MainForm\";\n";
+  code += "    RegisterClass(&wc);\n\n";
+  const mainForm = layout.find(c => c.type === "MainForm");
+  if (mainForm) {
+    code += `    HWND hWnd = CreateWindowEx(0, L"MainForm", L"${mainForm.caption}", WS_OVERLAPPEDWINDOW,\n`;
+    code += `        CW_USEDEFAULT, CW_USEDEFAULT, ${mainForm.w}, ${mainForm.h}, NULL, NULL, hInstance, NULL);\n`;
+  } else {
+    code += "    HWND hWnd = CreateWindowEx(0, L\"MainForm\", L\"Form1\", WS_OVERLAPPEDWINDOW,\n";
+    code += "        CW_USEDEFAULT, CW_USEDEFAULT, 800, 600, NULL, NULL, hInstance, NULL);\n";
+  }
+  code += "    ShowWindow(hWnd, nCmdShow);\n    UpdateWindow(hWnd);\n\n";
+  code += "    MSG msg;\n    while (GetMessage(&msg, NULL, 0, 0)) {\n";
+  code += "        TranslateMessage(&msg);\n        DispatchMessage(&msg);\n    }\n";
+  code += "    return (int) msg.wParam;\n}\n\n";
+  code += "LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) {\n";
+  code += "    switch (message) {\n";
+  code += "    case WM_CREATE:\n";
+
+  layout.forEach(c => {
+    if (c.type === "MainForm") return;
+    const varName = c.id.replace(/[^a-zA-Z0-9_]/g, "_");
+    const caption = c.caption || c.type;
+    code += `        CreateWindowW(L"${getClassFromType(c.type)}", L"${caption}", WS_CHILD | WS_VISIBLE,\n`;
+    code += `            ${c.x}, ${c.y}, ${c.w}, ${c.h}, hWnd, (HMENU)${Math.floor(Math.random()*10000)}, NULL, NULL);\n`;
+  });
+
+  code += "        break;\n    case WM_DESTROY:\n";
+  code += "        PostQuitMessage(0);\n        break;\n";
+  code += "    default:\n        return DefWindowProc(hWnd, message, wParam, lParam);\n";
+  code += "    }\n    return 0;\n}\n";
+  return code;
+}
+
+// 🧩 Sinh Python code tương ứng (tkinter-like)
+function generatePythonCode(layout) {
+  let code = "import tkinter as tk\n\nroot = tk.Tk()\n";
+  const main = layout.find(c => c.type === "MainForm");
+  if (main) {
+    code += `root.title("${main.caption}")\n`;
+    code += `root.geometry("${main.w}x${main.h}+100+100")\n`;
+  } else {
+    code += 'root.title("Form1")\nroot.geometry("800x600+100+100")\n';
+  }
+
+  layout.forEach(c => {
+    if (c.type === "MainForm") return;
+    const name = c.id.replace(/[^a-zA-Z0-9_]/g, "_");
+    const caption = c.caption || c.type;
+    if (c.type === "Button")
+      code += `${name} = tk.Button(root, text="${caption}")\n`;
+    else if (c.type === "Edit")
+      code += `${name} = tk.Entry(root)\n`;
+    else if (c.type === "Static")
+      code += `${name} = tk.Label(root, text="${caption}")\n`;
+    else
+      code += `${name} = tk.Label(root, text="${caption}")\n`;
+    code += `${name}.place(x=${c.x}, y=${c.y}, width=${c.w}, height=${c.h})\n`;
+  });
+  code += "\nroot.mainloop()\n";
+  return code;
+}
+
+// 🧱 Chuyển type → class Win32
+function getClassFromType(type) {
+  const map = {
+    Button: "Button",
+    Edit: "Edit",
+    Static: "Static",
+    ComboBox: "ComboBox",
+    ListBox: "ListBox",
+    CheckBox: "Button",
+    RadioButton: "Button",
+    GroupBox: "Button",
+    ProgressBar: "msctls_progress32",
+    DateTimePicker: "SysDateTimePick32",
+    TabControl: "SysTabControl32",
+    ListView: "SysListView32",
+    TreeView: "SysTreeView32",
+    Toolbar: "ToolbarWindow32",
+    StatusBar: "msctls_statusbar32",
+    PictureBox: "Static",
+    Trackbar: "msctls_trackbar32",
+    UpDown: "msctls_updown32",
+    IPAddress: "SysIPAddress32",
+    HotKeyCtrl: "msctls_hotkey32",
+    MonthCalendar: "SysMonthCal32",
+    SysLink: "SysLink",
+    ScrollBar: "ScrollBar",
+    CustomControl: "CustomClass"
+  };
+  return map[type] || "Static";
+}
+
+// 📤 Nút EXPORT → Auto Copy
+exportBtn.addEventListener("click", ()=>{
+  updateCodePreview();
+  navigator.clipboard.writeText(codePreview.textContent);
+  popup.style.display="block";
+  setTimeout(()=> popup.style.display="none",1500);
+});
+
+// 🌐 Khi đổi ngôn ngữ
+langSelect.addEventListener("change", updateCodePreview);
+
+// 🚀 Cập nhật lần đầu
+updateCodePreview();
+</script>
+</body>
+</html>
