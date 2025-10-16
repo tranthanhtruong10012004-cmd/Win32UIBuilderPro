@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Win32 UI Builder Pro v6 Live</title>
+<style>
+/* ========== 🌈 TOÀN BỘ GIAO DIỆN LIGHT/DARK ========== */
+:root {
+  --bg-color: #f5f5f5;
+  --text-color: #222;
+  --border-color: #ccc;
+  --accent: #0078D7;
+  --panel-bg: #ffffff;
+  --code-bg: #fafafa;
+}
+body.dark {
+  --bg-color: #1e1e1e;
+  --text-color: #f5f5f5;
+  --border-color: #555;
+  --accent: #3794ff;
+  --panel-bg: #252526;
+  --code-bg: #1e1e1e;
+}
+body {
+  margin: 0;
+  font-family: "Segoe UI", sans-serif;
+  background: var(--bg-color);
+  color: var(--text-color);
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ========== 🪟 THANH TITLE ========== */
+#titlebar {
+  background: var(--accent);
+  color: #fff;
+  padding: 8px 16px;
+  font-weight: 600;
+  user-select: none;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+#titlebar span {
+  font-size: 14px;
+}
+#themeToggle {
+  cursor: pointer;
+  background: rgba(255,255,255,0.2);
+  padding: 4px 10px;
+  border-radius: 6px;
+  transition: background 0.2s;
+}
+#themeToggle:hover {
+  background: rgba(255,255,255,0.35);
+}
+
+/* ========== 🧰 TOOLBAR ========== */
+#toolbar {
+  background: var(--panel-bg);
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  gap: 6px;
+  padding: 6px 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+#toolbar button, #toolbar select {
+  padding: 6px 10px;
+  font-size: 13px;
+  border: 1px solid var(--border-color);
+  background: var(--code-bg);
+  cursor: pointer;
+  border-radius: 4px;
+  transition: background 0.2s;
+}
+#toolbar button:hover {
+  background: var(--accent);
+  color: #fff;
+}
+#toolbar select {
+  font-size: 13px;
+}
+
+/* ========== 📐 KHU VỰC CANVAS CHÍNH ========== */
+#workspace {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+}
+#canvas {
+  position: relative;
+  flex: 1;
+  background: repeating-linear-gradient(0deg, var(--panel-bg), var(--panel-bg) 7px, var(--border-color) 8px),
+              repeating-linear-gradient(90deg, var(--panel-bg), var(--panel-bg) 7px, var(--border-color) 8px);
+  overflow: auto;
+  border-right: 1px solid var(--border-color);
+}
+
+/* ========== 📋 PROPERTY PANEL ========== */
+#propertyPanel {
+  width: 260px;
+  background: var(--panel-bg);
+  border-left: 1px solid var(--border-color);
+  padding: 8px;
+  overflow-y: auto;
+}
+#propertyPanel h3 {
+  margin-top: 0;
+  font-size: 15px;
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 4px;
+}
+.property {
+  margin-bottom: 8px;
+}
+.property label {
+  display: block;
+  font-size: 12px;
+  margin-bottom: 3px;
+}
+.property input, .property textarea, .property select {
+  width: 100%;
+  font-size: 12px;
+  padding: 3px;
+  border: 1px solid var(--border-color);
+  border-radius: 3px;
+  background: var(--code-bg);
+  color: var(--text-color);
+}
+
+/* ========== 🪟 CONTROL TRÊN CANVAS ========== */
+.control {
+  position: absolute;
+  border: 1px solid var(--accent);
+  background: var(--panel-bg);
+  color: var(--text-color);
+  text-align: center;
+  font-size: 12px;
+  user-select: none;
+  cursor: move;
+  overflow: hidden;
+  border-radius: 3px;
+}
+.control.locked {
+  border-style: dotted;
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+/* ========== 🧾 CODE PREVIEW PANEL ========== */
+#codePreview {
+  background: var(--code-bg);
+  color: var(--text-color);
+  font-family: "Consolas", monospace;
+  font-size: 12px;
+  border-top: 1px solid var(--border-color);
+  padding: 10px;
+  height: 200px;
+  overflow: auto;
+  white-space: pre;
+}
+
+/* ========== ⚡ POPUP ALERT COPY ========== */
+#popup {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  background: var(--accent);
+  color: #fff;
+  padding: 8px 16px;
+  border-radius: 6px;
+  display: none;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+</style>
+</head>
+<body>
+
+<!-- 🪟 Thanh tiêu đề -->
+<div id="titlebar">
+  <span>Form1 – Win32 UI Builder Pro v6</span>
+  <div id="themeToggle">🌙 Dark</div>
+</div>
+
+<!-- 🧰 Thanh công cụ -->
+<div id="toolbar">
+  <select id="controlSelect">
+    <option value="">➕ Thêm Control</option>
+    <option value="MainForm">MainForm (Cửa sổ gốc)</option>
+    <option value="Button">Button (Nút bấm)</option>
+    <option value="Edit">Edit (Ô nhập)</option>
+    <option value="Static">Static (Nhãn)</option>
+    <option value="ComboBox">ComboBox (Danh sách thả)</option>
+    <option value="ListBox">ListBox (Danh sách)</option>
+    <option value="CheckBox">CheckBox</option>
+    <option value="RadioButton">RadioButton</option>
+    <option value="GroupBox">GroupBox</option>
+    <option value="ProgressBar">ProgressBar</option>
+    <option value="DateTimePicker">DateTimePicker</option>
+    <option value="TabControl">TabControl</option>
+    <option value="ListView">ListView</option>
+    <option value="TreeView">TreeView</option>
+    <option value="Toolbar">Toolbar</option>
+    <option value="StatusBar">StatusBar</option>
+    <option value="PictureBox">PictureBox</option>
+    <option value="Trackbar">Trackbar (Slider)</option>
+    <option value="UpDown">UpDown (Spin)</option>
+    <option value="IPAddress">IPAddressCtrl</option>
+    <option value="HotKeyCtrl">HotKeyCtrl</option>
+    <option value="MonthCalendar">MonthCalendar</option>
+    <option value="SysLink">SysLink</option>
+    <option value="ScrollBar">ScrollBar</option>
+    <option value="CustomControl">CustomControl</option>
+  </select>
+
+  <button id="removeBtn">🗑 Xóa</button>
+  <button id="undoBtn">🔁 Undo</button>
+  <button id="clearBtn">🧹 Xóa tất cả</button>
+  <button id="saveBtn">💾 Lưu layout</button>
+  <button id="loadBtn">📂 Nạp layout</button>
+  <button id="exportBtn">📤 Xuất code</button>
+  <select id="langSelect">
+    <option value="cpp">C++</option>
+    <option value="c">C</option>
+    <option value="json">JSON</option>
+    <option value="python">Python GUI</option>
+  </select>
+</div>
+
+<!-- 🧱 Khu vực làm việc chính -->
+<div id="workspace">
+  <div id="canvas"></div>
+  <div id="propertyPanel">
+    <h3>Thuộc tính</h3>
+    <div id="propertyContent">Chọn 1 control để chỉnh thuộc tính</div>
+  </div>
+</div>
+
+<!-- 🧾 Khung xem code -->
+<div id="codePreview">// Code C++ Win32 sẽ xuất hiện tại đây...</div>
+
+<div id="popup">✅ Đã sao chép vào clipboard</div>
+  <script>
+// ==============================
+// ⚙️ CẤU HÌNH & BIẾN TOÀN CỤC
+// ==============================
+const canvas = document.getElementById("canvas");
+const propertyContent = document.getElementById("propertyContent");
+const controlSelect = document.getElementById("controlSelect");
+const themeToggle = document.getElementById("themeToggle");
+const popup = document.getElementById("popup");
+const undoStack = [];
+let selectedControl = null;
+let isDragging = false;
+let offsetX = 0, offsetY = 0;
+let isLockedAll = false;
+const MAX_UNDO = 3;
+
+// ==============================
+// 🌙 DARK/LIGHT MODE
+// ==============================
+themeToggle.addEventListener("click", () => {
+  document.body.classList.toggle("dark");
+  const isDark = document.body.classList.contains("dark");
+  themeToggle.textContent = isDark ? "☀️ Light" : "🌙 Dark";
+  localStorage.setItem("ui_theme", isDark ? "dark" : "light");
+});
+
+window.addEventListener("load", () => {
+  if (localStorage.getItem("ui_theme") === "dark") {
+    document.body.classList.add("dark");
+    themeToggle.textContent = "☀️ Light";
+  }
+});
+
+// ==============================
+// ➕ THÊM CONTROL VÀO FORM
+// ==============================
+controlSelect.addEventListener("change", () => {
+  const type = controlSelect.value;
+  if (!type) return;
+  addControl(type);
+  controlSelect.value = "";
+});
+
+// ⚙️ HÀM CHÍNH TẠO CONTROL
+function addControl(type) {
+  const ctrl = document.createElement("div");
+  ctrl.className = "control";
+  ctrl.dataset.type = type;
+  ctrl.style.left = "40px";
+  ctrl.style.top = "40px";
+  ctrl.style.width = "120px";
+  ctrl.style.height = "30px";
+  ctrl.dataset.caption = type;
+  ctrl.textContent = type;
+  ctrl.dataset.locked = "false";
+  ctrl.dataset.id = `${type}_${Date.now()}`;
+
+  // MainForm chỉ cho phép 1 cái
+  if (type === "MainForm") {
+    const exists = [...canvas.children].find(c => c.dataset.type === "MainForm");
+    if (exists) {
+      alert("⚠️ Chỉ được có 1 MainForm duy nhất!");
+      return;
+    }
+    ctrl.style.width = "800px";
+    ctrl.style.height = "600px";
+    ctrl.style.left = "10px";
+    ctrl.style.top = "10px";
+  }
+
+  makeDraggable(ctrl);
+  canvas.appendChild(ctrl);
+  selectControl(ctrl);
+  saveState();
+}
+
+// ==============================
+// 🖱️ KÉO THẢ CONTROL + SNAP GRID
+// ==============================
+function makeDraggable(ctrl) {
+  ctrl.addEventListener("mousedown", (e) => {
+    if (ctrl.dataset.locked === "true") return;
+    selectedControl = ctrl;
+    selectControl(ctrl);
+    isDragging = true;
+    offsetX = e.offsetX;
+    offsetY = e.offsetY;
+  });
+
+  window.addEventListener("mousemove", (e) => {
+    if (!isDragging || ctrl.dataset.locked === "true") return;
+    const rect = canvas.getBoundingClientRect();
+    let x = e.clientX - rect.left - offsetX;
+    let y = e.clientY - rect.top - offsetY;
+    // Snap grid 8px
+    x = Math.round(x / 8) * 8;
+    y = Math.round(y / 8) * 8;
+    ctrl.style.left = x + "px";
+    ctrl.style.top = y + "px";
+    updatePropertiesPanel(ctrl);
+    updateCodePreview();
+  });
+
+  window.addEventListener("mouseup", () => {
+    if (isDragging) {
+      isDragging = false;
+      saveState();
+    }
+  });
+
+  ctrl.addEventListener("click", (e) => {
+    e.stopPropagation();
+    selectControl(ctrl);
+  });
+}
+
+// ==============================
+// 📋 PANEL THUỘC TÍNH
+// ==============================
+function selectControl(ctrl) {
+  selectedControl = ctrl;
+  document.querySelectorAll(".control").forEach(c => c.style.outline = "none");
+  ctrl.style.outline = `2px solid var(--accent)`;
+  updatePropertiesPanel(ctrl);
+}
+
+function updatePropertiesPanel(ctrl) {
+  const id = ctrl.dataset.id;
+  const type = ctrl.dataset.type;
+  const caption = ctrl.dataset.caption;
+  const locked = ctrl.dataset.locked === "true";
+  const x = parseInt(ctrl.style.left);
+  const y = parseInt(ctrl.style.top);
+  const w = parseInt(ctrl.style.width);
+  const h = parseInt(ctrl.style.height);
+
+  propertyContent.innerHTML = `
+    <div class='property'><label>ID:</label><input id='prop_id' value='${id}'></div>
+    <div class='property'><label>Loại:</label><input id='prop_type' value='${type}' disabled></div>
+    <div class='property'><label>Caption (Nội dung):</label><input id='prop_caption' value='${caption}'></div>
+    <div class='property'><label>X:</label><input id='prop_x' type='number' value='${x}'></div>
+    <div class='property'><label>Y:</label><input id='prop_y' type='number' value='${y}'></div>
+    <div class='property'><label>Rộng:</label><input id='prop_w' type='number' value='${w}'></div>
+    <div class='property'><label>Cao:</label><input id='prop_h' type='number' value='${h}'></div>
+    <div class='property'><label><input id='prop_locked' type='checkbox' ${locked ? "checked":""}> Khóa control</label></div>
+  `;
+
+  // Lắng nghe thay đổi
+  document.getElementById("prop_caption").addEventListener("input", e => {
+    ctrl.dataset.caption = e.target.value;
+    ctrl.textContent = e.target.value;
+    updateCodePreview();
+  });
+  ["x","y","w","h"].forEach(k=>{
+    document.getElementById(`prop_${k}`).addEventListener("input", e=>{
+      const val = parseInt(e.target.value);
+      if(k==="x") ctrl.style.left = val+"px";
+      if(k==="y") ctrl.style.top = val+"px";
+      if(k==="w") ctrl.style.width = val+"px";
+      if(k==="h") ctrl.style.height = val+"px";
+      updateCodePreview();
+    });
+  });
+  document.getElementById("prop_locked").addEventListener("change", e=>{
+    ctrl.dataset.locked = e.target.checked;
+    ctrl.classList.toggle("locked", e.target.checked);
+  });
+}
+
+// ==============================
+// 💾 LƯU / LOAD LAYOUT
+// ==============================
+function getLayout() {
+  const data = [];
+  canvas.querySelectorAll(".control").forEach(c=>{
+    data.push({
+      id: c.dataset.id,
+      type: c.dataset.type,
+      caption: c.dataset.caption,
+      x: parseInt(c.style.left),
+      y: parseInt(c.style.top),
+      w: parseInt(c.style.width),
+      h: parseInt(c.style.height),
+      locked: c.dataset.locked === "true"
+    });
+  });
+  return data;
+}
+function setLayout(data) {
+  canvas.innerHTML = "";
+  data.forEach(d=>{
+    const ctrl = document.createElement("div");
+    ctrl.className = "control";
+    ctrl.dataset.type = d.type;
+    ctrl.dataset.id = d.id;
+    ctrl.dataset.caption = d.caption;
+    ctrl.dataset.locked = d.locked;
+    ctrl.textContent = d.caption;
+    ctrl.style.left = d.x+"px";
+    ctrl.style.top = d.y+"px";
+    ctrl.style.width = d.w+"px";
+    ctrl.style.height = d.h+"px";
+    if(d.locked) ctrl.classList.add("locked");
+    makeDraggable(ctrl);
+    canvas.appendChild(ctrl);
+  });
+  updateCodePreview();
+}
+document.getElementById("saveBtn").onclick = ()=>{
+  const blob = new Blob([JSON.stringify(getLayout(),null,2)], {type:"text/plain"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "layout.txt";
+  a.click();
+};
+document.getElementById("loadBtn").onclick = ()=>{
+  const inp = document.createElement("input");
+  inp.type="file";
+  inp.accept=".txt";
+  inp.onchange = e=>{
+    const file = e.target.files[0];
+    const reader = new FileReader();
+    reader.onload = ev=>{
+      const data = JSON.parse(ev.target.result);
+      setLayout(data);
+    };
+    reader.readAsText(file);
+  };
+  inp.click();
+};
+
+// ==============================
+// 🔁 UNDO STACK
+// ==============================
+function saveState(){
+  const layout = JSON.stringify(getLayout());
+  undoStack.push(layout);
+  if(undoStack.length > MAX_UNDO) undoStack.shift();
+}
+document.getElementById("undoBtn").onclick = ()=>{
+  if(undoStack.length < 2) return;
+  undoStack.pop();
+  const prev = JSON.parse(undoStack[undoStack.length-1]);
+  setLayout(prev);
+};
+
+// ==============================
+// 🧹 CLEAR TOÀN BỘ
+// ==============================
+document.getElementById("clearBtn").onclick = ()=>{
+  if(!confirm("Xóa toàn bộ layout?")) return;
+  canvas.innerHTML="";
+  saveState();
+  updateCodePreview();
+};
+
+// ==============================
+// 🗑 REMOVE CONTROL
+// ==============================
+document.getElementById("removeBtn").onclick = ()=>{
+  if(!selectedControl) return;
+  selectedControl.remove();
+  selectedControl=null;
+  propertyContent.textContent="Chọn 1 control để chỉnh thuộc tính";
+  saveState();
+  updateCodePreview();
+};
+
+// ==============================
+// 💬 CLICK NGOÀI CANVAS
+// ==============================
+canvas.addEventListener("click", ()=>{
+  selectedControl=null;
+  document.querySelectorAll(".control").forEach(c=>c.style.outline="none");
+  propertyContent.textContent="Chọn 1 control để chỉnh thuộc tính";
+});
+</script>
+
