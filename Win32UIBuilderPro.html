@@ -491,6 +491,77 @@ window.addEventListener("beforeunload", (event) => {
     return event.returnValue;
   }
 });
+// ======= HOTKEY SUPPORT =======
+document.addEventListener("keydown", (e) => {
+  // CTRL + S → Lưu layout
+  if (e.ctrlKey && e.key.toLowerCase() === "s") {
+    e.preventDefault();
+    const blob = new Blob([JSON.stringify(getLayout(), null, 2)], { type: "application/json" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "layout_saved.json";
+    a.click();
+    console.log("💾 Layout saved by Ctrl+S");
+  }
+
+  // CTRL + O → Nạp layout
+  if (e.ctrlKey && e.key.toLowerCase() === "o") {
+    e.preventDefault();
+    const controls = document.querySelectorAll(".control");
+    const hasControls = controls.length > 0;
+    if (hasControls) {
+      const confirmReload = confirm("⚠️ Bạn đang có dự án hiện tại.\nBạn có muốn nạp layout mới không?\n\nChọn OK để nạp, hoặc Cancel để hủy.");
+      if (!confirmReload) return;
+    }
+    const inp = document.createElement("input");
+    inp.type = "file";
+    inp.accept = ".json";
+    inp.onchange = (ev) => {
+      const f = ev.target.files[0];
+      if (!f) return;
+      const r = new FileReader();
+      r.onload = (rEvent) => {
+        try {
+          setLayout(JSON.parse(rEvent.target.result));
+          alert("✅ Đã nạp layout thành công!");
+        } catch (err) {
+          alert("❌ Lỗi nạp layout: " + err.message);
+        }
+      };
+      r.readAsText(f);
+    };
+    inp.click();
+  }
+
+  // CTRL + E → Xuất code
+  if (e.ctrlKey && e.key.toLowerCase() === "e") {
+    e.preventDefault();
+    exportBtn.click();
+  }
+
+  // CTRL + Z → Undo
+  if (e.ctrlKey && e.key.toLowerCase() === "z") {
+    e.preventDefault();
+    if (undoStack.length > 1) {
+      undoStack.pop();
+      const prev = JSON.parse(undoStack[undoStack.length - 1]);
+      setLayout(prev);
+      console.log("↩️ Undo");
+    }
+  }
+
+  // DELETE → Xóa control được chọn
+  if ((e.key === "Delete" || (e.ctrlKey && e.key.toLowerCase() === "d")) && selected) {
+    e.preventDefault();
+    selected.remove();
+    selected = null;
+    saveState();
+    console.log("🗑 Control deleted");
+  }
+});
+
+
+
   // ======== TIỆN ÍCH ========
   const scrollToCenter = () => {
     const wrapper = document.getElementById("canvasWrapper");
@@ -534,12 +605,16 @@ window.addEventListener("beforeunload", (event) => {
     };
     inp.click();
   };
-
-  clearBtn.onclick = () => {
+ clearBtn.onclick = () => {
     if (confirm("⚠️ Xóa toàn bộ control trên canvas?")) {
       canvas.innerHTML = '<div id="axisX" class="axis"></div><div id="axisY" class="axis"></div>';
       saveState();
     }
+  };
+  removeBtn.onclick = () => {
+        selected.remove();
+    selected = null;
+    saveState();
   };
 
   lockBtn.onclick = () => {
