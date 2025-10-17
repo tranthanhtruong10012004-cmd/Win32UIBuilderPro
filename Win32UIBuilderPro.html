@@ -473,6 +473,7 @@ window.addEventListener("DOMContentLoaded", () => {
   const loadBtn = document.getElementById("loadBtn");
   const clearBtn = document.getElementById("clearBtn");
   const lockBtn = document.getElementById("lockBtn");
+  const undoBtn = document.getElementById("undoBtn");
   const exportBtn = document.getElementById("exportBtn");
   const exportSelect = document.getElementById("exportSelect");
   const outputZone = document.getElementById("outputZone");
@@ -615,6 +616,14 @@ document.addEventListener("keydown", (e) => {
         selected.remove();
     selected = null;
     saveState();
+  };
+  undoBtn.onclick = () => {
+     if (undoStack.length > 1) {
+      undoStack.pop();
+      const prev = JSON.parse(undoStack[undoStack.length - 1]);
+      setLayout(prev);
+      console.log("↩️ Undo");
+    }
   };
 
   lockBtn.onclick = () => {
