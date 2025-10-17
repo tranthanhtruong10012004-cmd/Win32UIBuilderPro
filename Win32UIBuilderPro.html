@@ -371,6 +371,17 @@ body.dark .menu-add { color:#fff; }
   color:#0078D7;
   background:transparent !important;
 }
+.progress-bar {
+  background:#ddd;
+  border-radius:4px;
+  overflow:hidden;
+}
+.progress-inner {
+  height:100%;
+  background:linear-gradient(90deg,#4caf50,#2e7d32);
+  transition:width 0.2s;
+}
+
 </style>
 </head>
 <body class="win11">
@@ -448,43 +459,66 @@ body.dark .menu-add { color:#fff; }
 </div>
 <script>
 window.addEventListener("DOMContentLoaded", () => {
+  // ======== BIẾN TOÀN CỤC ========
   const canvasWrapper = document.getElementById("canvasWrapper");
   const canvas = document.getElementById("canvas");
   const propertyContent = document.getElementById("propertyContent");
-  const colorPicker = document.getElementById("colorPicker");
-  const colorInput = document.getElementById("colorInput");
-  const fontSelect = document.getElementById("fontSelect");
   const controlSelect = document.getElementById("controlSelect");
   const themeToggle = document.getElementById("themeToggle");
   const themeSelect = document.getElementById("themeSelect");
   const zoomSlider = document.getElementById("zoomSlider");
   const zoomValue = document.getElementById("zoomValue");
 
+  const saveBtn = document.getElementById("saveBtn");
+  const loadBtn = document.getElementById("loadBtn");
+  const clearBtn = document.getElementById("clearBtn");
+  const lockBtn = document.getElementById("lockBtn");
+  const exportBtn = document.getElementById("exportBtn");
+  const exportSelect = document.getElementById("exportSelect");
+  const outputZone = document.getElementById("outputZone");
+
   const CENTER = 4000;
-  let selected = null, isDragging = false, ox = 0, oy = 0, locked = false, zoomLevel = 100;
+  let selected = null, isDragging = false, ox = 0, oy = 0;
+  let lockedAll = false, zoomLevel = 100, currentMenu = "";
   const undoStack = [], MAX_UNDO = 20;
-// 🎹 Hotkeys hỗ trợ toàn cục (Ctrl + S, O, D, Z, E)
-document.addEventListener("keydown", (e) => {
-  const tag = e.target.tagName.toLowerCase();
-  const isTyping = tag === "input" || tag === "textarea" || e.target.isContentEditable;
+// 🟠 CẢNH BÁO KHI F5 / RELOAD TRANG
+window.addEventListener("beforeunload", (event) => {
+  const hasControls = document.querySelectorAll(".control").length > 0;
+  if (hasControls) {
+    // Hiện cảnh báo tùy trình duyệt (Chrome, Edge, Firefox, v.v.)
+    event.preventDefault();
+    event.returnValue = "⚠️ Bạn đang có dự án chưa lưu. Rời khỏi trang sẽ mất toàn bộ thay đổi.";
+    return event.returnValue;
+  }
+});
+  // ======== TIỆN ÍCH ========
+  const scrollToCenter = () => {
+    const wrapper = document.getElementById("canvasWrapper");
+    wrapper.scrollLeft = (canvas.scrollWidth - wrapper.clientWidth) / 2;
+    wrapper.scrollTop = (canvas.scrollHeight - wrapper.clientHeight) / 2;
+  };
 
-  // ⛔ bỏ qua nếu đang nhập text và không giữ Ctrl
-  if (!e.ctrlKey && isTyping) return;
+  const saveState = () => {
+    undoStack.push(JSON.stringify(getLayout()));
+    if (undoStack.length > MAX_UNDO) undoStack.shift();
+  };
 
-  // Ctrl + S → Lưu layout
-  if (e.ctrlKey && e.key.toLowerCase() === "s") {
-    e.preventDefault();
+  const updateZoom = () => {
+    canvas.style.transform = `scale(${zoomLevel / 100})`;
+    zoomValue.textContent = `${zoomLevel}%`;
+  };
+
+  // ======== NÚT TOOLBAR ========
+  saveBtn.onclick = () => {
     const blob = new Blob([JSON.stringify(getLayout(), null, 2)], { type: "application/json" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
-    a.download = "layout_hotkey.json";
+    a.download = "layout_saved.json";
     a.click();
-    console.log("💾 Ctrl+S: Layout saved");
-  }
+    alert("💾 Đã lưu layout thành file JSON!");
+  };
 
-  // Ctrl + O → Nạp layout
-  if (e.ctrlKey && e.key.toLowerCase() === "o") {
-    e.preventDefault();
+  loadBtn.onclick = () => {
     const inp = document.createElement("input");
     inp.type = "file";
     inp.accept = ".json";
@@ -493,288 +527,291 @@ document.addEventListener("keydown", (e) => {
       if (!f) return;
       const r = new FileReader();
       r.onload = (rEvent) => {
-        try {
-          setLayout(JSON.parse(rEvent.target.result));
-          console.log("📂 Ctrl+O: Layout loaded");
-        } catch (err) {
-          console.error("❌ Load error:", err.message);
-        }
+        try { setLayout(JSON.parse(rEvent.target.result)); }
+        catch (err) { alert("❌ Lỗi nạp layout: " + err.message); }
       };
       r.readAsText(f);
     };
     inp.click();
-  }
+  };
 
-  // Ctrl + D hoặc Delete → Xóa control đang chọn
-  if ((e.ctrlKey && e.key.toLowerCase() === "d") || e.key === "Delete") {
-    e.preventDefault();
-    if (selected) {
-      selected.remove();
-      selected = null;
-      propertyContent.innerHTML = "Chọn control để chỉnh";
+  clearBtn.onclick = () => {
+    if (confirm("⚠️ Xóa toàn bộ control trên canvas?")) {
+      canvas.innerHTML = '<div id="axisX" class="axis"></div><div id="axisY" class="axis"></div>';
       saveState();
-      console.log("🗑 Ctrl+D/Delete: Control removed");
     }
-  }
+  };
 
-  // Ctrl + Z → Undo
-  if (e.ctrlKey && e.key.toLowerCase() === "z") {
-    e.preventDefault();
-    if (undoStack.length > 1) {
-      undoStack.pop();
-      const prev = JSON.parse(undoStack[undoStack.length - 1]);
-      setLayout(prev);
-      console.log("↩️ Ctrl+Z: Undo");
-    }
-  }
+  lockBtn.onclick = () => {
+    lockedAll = !lockedAll;
+    document.querySelectorAll(".control").forEach(c => {
+      c.classList.toggle("locked", lockedAll);
+      c.style.pointerEvents = lockedAll ? "none" : "auto";
+    });
+    lockBtn.textContent = lockedAll ? "🔒 Unlock" : "🔓 Lock";
+  };
 
-  // Ctrl + E → Xuất code
-  if (e.ctrlKey && e.key.toLowerCase() === "e") {
-    e.preventDefault();
-    document.getElementById("exportBtn")?.click();
-    console.log("📤 Ctrl+E: Code exported");
-  }
-}, true);
-window.addEventListener("beforeunload", (e) => {
-    const hasControl = document.querySelectorAll(".control").length > 0;
-    if (hasControl) {
-      const confirmationMessage = "Bạn có muốn lưu layout trước khi thoát không?";
-      e.preventDefault();
-      e.returnValue = confirmationMessage; // Chrome, Edge, Firefox
-      return confirmationMessage;
-    }
-  });
-  // 🌙 Dark/Light toggle
+  // ======== DARK/LIGHT + THEME ========
   themeToggle.onclick = () => {
     document.body.classList.toggle("dark");
     themeToggle.textContent = document.body.classList.contains("dark") ? "☀️ Light" : "🌙 Dark";
   };
-
-  // 🪟 Theme Switch
   themeSelect.onchange = () => {
     document.body.classList.remove("win10", "win11");
     document.body.classList.add(themeSelect.value);
   };
-  document.getElementById("removeBtn").onclick = () => {
-    if (!selected) return alert("⚠️ Chưa chọn control nào để xóa!");
-    selected.remove();
-    selected = null;
-    saveState();
-  };
 
-  // 🔁 Undo layout trước đó
-  document.getElementById("undoBtn").onclick = () => {
-    if (undoStack.length <= 1) return alert("⚠️ Không còn bước nào để quay lại!");
-    undoStack.pop(); // bỏ trạng thái hiện tại
-    const prev = JSON.parse(undoStack[undoStack.length - 1]);
-    setLayout(prev);
-  };
-
-  // 🧹 Xóa toàn bộ control
-  document.getElementById("clearBtn").onclick = () => {
-    if (!confirm("Bạn có chắc chắn muốn xóa toàn bộ control không?")) return;
-    canvas.innerHTML = '<div id="axisX" class="axis"></div><div id="axisY" class="axis"></div>';
-    selected = null;
-    saveState();
-  };
-    document.getElementById("copyJSON").onclick = () => {
-    try {
-      const layout = getLayout();
-      const jsonText = JSON.stringify(layout, null, 2);
-      navigator.clipboard.writeText(jsonText);
-      document.getElementById("outputZone").textContent = jsonText;
-      alert("✅ Đã copy layout JSON hiện tại!");
-    } catch (err) {
-      alert("❌ Lỗi khi copy JSON: " + err.message);
-    }
-  };
-  // 🎨 Color picker
-  function applyColor(val){ if(selected) selected.style.background = val; }
-  colorPicker.oninput = () => { colorInput.value = colorPicker.value; applyColor(colorPicker.value); };
-  colorInput.onchange = () => { colorPicker.value = colorInput.value; applyColor(colorInput.value); };
-
-  // 🔠 Font select
-  fontSelect.onchange = () => { if(selected) selected.style.fontFamily = fontSelect.value; };
-
-  // 🔍 Zoom
-  function updateZoom(){
-    canvas.style.transform = `scale(${zoomLevel / 100})`;
-    zoomValue.textContent = `${zoomLevel}%`;
-  }
+  // ======== ZOOM ========
   zoomSlider.oninput = e => { zoomLevel = parseInt(e.target.value); updateZoom(); };
   canvasWrapper.addEventListener("wheel", e => {
-    if(e.ctrlKey){
+    if (e.ctrlKey) {
       e.preventDefault();
-      zoomLevel += e.deltaY < 0 ? 1 : -1;
+      zoomLevel += e.deltaY < 0 ? 2 : -2;
       zoomLevel = Math.min(400, Math.max(25, zoomLevel));
       zoomSlider.value = zoomLevel;
       updateZoom();
     }
-  }, {passive:false});
+  }, { passive: false });
 
-  // 🔒 Lock toàn bộ
-  document.getElementById("lockBtn").onclick = () => {
-    locked = !locked;
-    document.querySelectorAll(".control").forEach(c => {
-      c.classList.toggle("locked", locked);
-      c.style.pointerEvents = locked ? "none" : "auto";
-    });
-  };
-canvasWrapper.scrollLeft = CENTER - canvasWrapper.clientWidth / 2;
-  canvasWrapper.scrollTop = CENTER - canvasWrapper.clientHeight / 2;
-  // ➕ Add Control
+  // ======== THÊM CONTROL ========
   controlSelect.onchange = e => {
     const type = e.target.value;
-    if(!type) return;
+    if (!type) return;
     addControl(type);
     e.target.value = "";
   };
 
-  // 🧩 Add control logic
-  function addControl(type, data=null){
-    let el;
-    if(type==="MainForm"){
-      el=document.createElement("div");
-      el.className="control ctrl-MainForm";
-      el.innerHTML=`<div class="title">${data?.caption||"MainForm"}</div>
-        <div class="win-btns">
-          <div class="win-btn min">–</div>
-          <div class="win-btn hide">▢</div>
-          <div class="win-btn close">✕</div>
-        </div>
-        <div class="content"></div>`;
-      makeMainFormDraggable(el);
-    } else if(type==="MenuBar"){
-      el=document.createElement("div");
-      el.className="control ctrl-MenuBar";
-      const tabs=data?.tabs||["File","Edit","View"];
-      el.innerHTML=`<div class="menu-tabs">${tabs.map(t=>`<div class="menu-tab" contenteditable="true">${t}</div>`).join("")}<div class="menu-add">+</div></div>`;
-      el.querySelector(".menu-add").onclick=()=>{
-        const t=document.createElement("div");
-        t.className="menu-tab";
-        t.contentEditable="true";
-        t.textContent="New";
-        el.querySelector(".menu-tabs").insertBefore(t, el.querySelector(".menu-add"));
-      };
-    } else if(type==="GroupBox"){
-      el=document.createElement("fieldset");
-      el.className="control";
-      el.style.background="transparent";
-      const legend=document.createElement("legend");
-      legend.textContent=data?.caption||"GroupBox";
-      el.appendChild(legend);
-    } else if(type==="Button"){
-      el=document.createElement("button");
-      el.className="control";
-      el.textContent=data?.caption||"Button";
-    } else if(type==="Edit"){
-      el=document.createElement("input");
-      el.className="control";
-      el.type="text";
-      el.value=data?.caption||"Edit";
-    } else if(type==="Static"){
-      el=document.createElement("label");
-      el.className="control";
-      el.textContent=data?.caption||"Static";
-    } else if(type==="CheckBox"||type==="RadioButton"){
-      el=document.createElement("label");
-      el.classList.add("control");
-      el.style.display="inline-flex";
-      el.style.alignItems="center";
-      const input=document.createElement("input");
-      input.type=type==="CheckBox"?"checkbox":"radio";
-      input.style.marginRight="5px";
-      const span=document.createElement("span");
-      span.textContent=data?.caption||type;
-      el.append(input,span);
-    } else {
-      el=document.createElement("div");
-      el.className="control";
-      el.textContent=data?.caption||type;
+ function addControl(type, data = null) {
+  let el;
+
+  switch (type) {
+    // ===== MENU BAR =====
+    case "MenuBar":
+      el = document.createElement("div");
+      el.className = "control ctrl-MenuBar";
+      const tabs = data?.tabs || ["File", "Edit", "View", "Help"];
+      el.innerHTML = `<div class="menu-tabs">
+        ${tabs.map(t => `<div class="menu-tab">${t}</div>`).join("")}
+      </div>`;
+      bindMenuTabs(el);
+      break;
+
+    // ===== BUTTON =====
+    case "Button":
+      el = document.createElement("button");
+      el.className = "control ctrl-Button";
+      el.textContent = data?.caption || "Button";
+      break;
+
+    // ===== EDIT (TEXTBOX) =====
+    case "Edit":
+      el = document.createElement("input");
+      el.type = "text";
+      el.className = "control ctrl-Edit";
+      el.value = data?.caption || "";
+      break;
+
+    // ===== GROUPBOX =====
+    case "GroupBox":
+      el = document.createElement("fieldset");
+      el.className = "control ctrl-GroupBox";
+      el.innerHTML = `<legend>${data?.caption || "GroupBox"}</legend>`;
+      break;
+
+    // ===== CHECKBOX =====
+    case "CheckBox":
+      el = document.createElement("label");
+      el.className = "control ctrl-CheckBox";
+      el.style.background = "transparent";
+      el.style.border = "none";
+      el.style.boxShadow = "none";
+      el.innerHTML = `<input type="checkbox"${data?.checked ? " checked" : ""} 
+        style="accent-color:#0078d7;background:transparent;border:none;margin-right:4px;">
+        <span style="background:transparent;">${data?.caption || "CheckBox"}</span>`;
+      break;
+
+    // ===== RADIO =====
+    case "Radio":
+      el = document.createElement("label");
+      el.className = "control ctrl-Radio";
+      el.style.background = "transparent";
+      el.style.border = "none";
+      el.style.boxShadow = "none";
+      el.innerHTML = `<input type="radio" name="radioGroup"${data?.checked ? " checked" : ""} 
+        style="accent-color:#0078d7;background:transparent;border:none;margin-right:4px;">
+        <span style="background:transparent;">${data?.caption || "Radio"}</span>`;
+      break;
+
+    // ===== COMBOBOX =====
+    case "ComboBox":
+      el = document.createElement("select");
+      el.className = "control ctrl-ComboBox";
+      (data?.options || ["Option 1", "Option 2"]).forEach(opt => {
+        const o = document.createElement("option");
+        o.textContent = opt;
+        el.appendChild(o);
+      });
+      break;
+
+    // ===== LABEL / STATIC =====
+    case "Label":
+    case "Static":
+      el = document.createElement("div");
+      el.className = "control ctrl-Label";
+      el.textContent = data?.caption || "Static";
+      el.style.background = "transparent";
+      el.style.border = "none";
+      el.style.boxShadow = "none";
+      el.style.cursor = "default";
+      el.style.textAlign = "left";
+      el.style.padding = "0 4px";
+      el.style.fontSize = "12px";
+      el.style.color = "#000";
+      break;
+
+    // ===== PROGRESSBAR =====
+    case "ProgressBar":
+      el = document.createElement("div");
+      el.className = "control ctrl-ProgressBar";
+      el.innerHTML = `<div class="bar" style="width:${data?.progress || 30}%"></div>`;
+      break;
+
+    default:
+      el = document.createElement("div");
+      el.className = "control";
+      el.textContent = data?.caption || type;
+  }
+
+  // ===== DATASET =====
+  el.dataset.type = type;
+  el.dataset.caption = data?.caption || type;
+  el.dataset.comment = data?.comment || "";
+  el.dataset.part = data?.part || "";
+  el.dataset.lock = data?.lock || "false";
+  el.dataset.visible = data?.visible ?? "true";
+
+  // ===== POSITION =====
+  const x = data ? CENTER + (data.x || 0) : CENTER;
+  const y = data ? CENTER + (data.y || 0) : CENTER;
+  el.style.left = x + "px";
+  el.style.top = y + "px";
+  el.style.width = (data?.w || 120) + "px";
+  el.style.height = (data?.h || 26) + "px";
+  el.style.display = el.dataset.visible === "false" ? "none" : "block";
+
+  // ===== APPEND CONTROL =====
+  canvas.appendChild(el);
+  makeDraggable(el);
+  selectControl(el);
+  saveState();
+  return el;
+}
+
+
+
+// ======== MENU ẨN/HIỆN ========
+function bindMenuTabs(menuBar) {
+  menuBar.querySelectorAll(".menu-tab").forEach(tab => {
+    tab.addEventListener("click", () => {
+      document.querySelectorAll(".menu-tab").forEach(t => t.classList.remove("active"));
+      tab.classList.add("active");
+      const menuName = tab.textContent.trim();
+      currentMenu = menuName;
+      showControlsByMenu(menuName);
+	
+    });
+  });
+
+  // Hiển thị mặc định menu đầu tiên (nếu có)
+  const firstTab = menuBar.querySelector(".menu-tab");
+  if (firstTab) {
+    firstTab.classList.add("active");
+    currentMenu = firstTab.textContent.trim();
+    showControlsByMenu(currentMenu);
+  }
+}
+
+function showControlsByMenu(menuName) {
+  currentMenu = menuName.trim();
+  console.log("🟩 Menu đang chọn:", currentMenu);
+
+  document.querySelectorAll(".control").forEach(ctrl => {
+    const type = ctrl.dataset.type || "";
+    const part = (ctrl.dataset.part || "").trim(); // ✨ trim luôn chuỗi part
+    const visible = ctrl.dataset.visible !== "false";
+
+    // Luôn hiển thị control nền hoặc không thuộc part
+    if (type === "MainForm" || type === "MenuBar" || part === "") {
+      ctrl.style.display = visible ? "block" : "none";
+      return;
     }
 
-    el.dataset.type=type;
-    el.dataset.caption=data?.caption||type;
-    el.dataset.comment=data?.comment||"";
-    el.dataset.part=data?.part||"";
-    el.dataset.style=data?.style||"WS_VISIBLE|WS_CHILD";
-    el.dataset.lock=data?.lock||"false";
+    // ✅ So sánh có normalize và trim hai bên
+    const match = (part.localeCompare(currentMenu, undefined, { sensitivity: "base" }) === 0) && visible;
+    ctrl.style.display = match ? "block" : "none";
 
-    const x=data?CENTER+data.x:CENTER;
-    const y=data?CENTER+data.y:CENTER;
-    el.style.left=x+"px"; el.style.top=y+"px";
-    el.style.width=(data?.w||120)+"px"; el.style.height=(data?.h||30)+"px";
+    // Log debug chi tiết
+    console.log(`${match ? "✅ Hiện" : "❌ Ẩn"} control: ${ctrl.dataset.caption || ctrl.dataset.type} → part: '${part}' / menuName: '${currentMenu}'`);
+  });
+}
 
-    canvas.appendChild(el);
-    makeDraggable(el);
-    selectControl(el);
-    saveState();
-  }
-
-  // 🖱 Drag control
-  function makeDraggable(el){
-    el.onmousedown=e=>{
-      if(e.button!==0||locked)return;
-      if(el.dataset.lock==="true")return;
-      isDragging=true; ox=e.offsetX; oy=e.offsetY; selectControl(el);
+  // ======== KÉO CONTROL ========
+  function makeDraggable(el) {
+    el.onmousedown = e => {
+      if (e.button !== 0 || lockedAll) return;
+      if (el.dataset.lock === "true") return;
+      isDragging = true;
+      ox = e.offsetX; oy = e.offsetY;
+      selectControl(el);
     };
   }
-  window.onmousemove=e=>{
-    if(isDragging&&selected){
-      const rect=canvas.getBoundingClientRect();
-      selected.style.left=e.clientX-rect.left-ox+"px";
-      selected.style.top=e.clientY-rect.top-oy+"px";
+  window.onmousemove = e => {
+    if (isDragging && selected) {
+      const rect = canvas.getBoundingClientRect();
+      selected.style.left = e.clientX - rect.left - ox + "px";
+      selected.style.top = e.clientY - rect.top - oy + "px";
       updateProperty(selected);
     }
   };
-  window.onmouseup=()=>{ if(isDragging){isDragging=false; saveState();} };
+  window.onmouseup = () => { if (isDragging) { isDragging = false; saveState(); } };
 
-  // 🧱 MainForm Drag
-  function makeMainFormDraggable(form){
-    const title=form.querySelector(".title");
-    let down=false,sx=0,sy=0;
-    title.addEventListener("mousedown",e=>{
-      down=true; sx=e.clientX-form.offsetLeft; sy=e.clientY-form.offsetTop; form.style.zIndex=9999;
-    });
-    window.addEventListener("mouseup",()=>down=false);
-    window.addEventListener("mousemove",e=>{
-      if(!down)return;
-      form.style.left=(e.clientX-sx)+"px"; form.style.top=(e.clientY-sy)+"px";
-    });
-  }
-
-  // 🧩 Property Panel
-  function selectControl(ctrl){
-    document.querySelectorAll(".control").forEach(c=>c.classList.remove("selected"));
+  // ======== PROPERTY PANEL ========
+  function selectControl(ctrl) {
+    document.querySelectorAll(".control").forEach(c => c.classList.remove("selected"));
     ctrl.classList.add("selected");
-    selected=ctrl; updateProperty(ctrl);
+    selected = ctrl;
+    updateProperty(ctrl);
   }
 
-  // === Update Property ===
-  function updateProperty(ctrl){
-    const x=parseInt(ctrl.style.left)-CENTER;
-    const y=parseInt(ctrl.style.top)-CENTER;
-    const w=parseInt(ctrl.style.width)||120;
-    const h=parseInt(ctrl.style.height)||30;
-    const locked=ctrl.dataset.lock==="true"?"checked":"";
-    propertyContent.innerHTML=`
+  function updateProperty(ctrl) {
+    const x = parseInt(ctrl.style.left) - CENTER;
+    const y = parseInt(ctrl.style.top) - CENTER;
+    const w = parseInt(ctrl.style.width) || 120;
+    const h = parseInt(ctrl.style.height) || 30;
+    const checkedLock = ctrl.dataset.lock === "true" ? "checked" : "";
+    const checkedVis = ctrl.dataset.visible !== "false" ? "checked" : "";
+
+    propertyContent.innerHTML = `
       <div class='property'><label>X:</label><input id='p_x' type='number' value='${x}'></div>
       <div class='property'><label>Y:</label><input id='p_y' type='number' value='${y}'></div>
       <div class='property'><label>Rộng:</label><input id='p_w' type='number' value='${w}'></div>
       <div class='property'><label>Cao:</label><input id='p_h' type='number' value='${h}'></div>
-      <div class='property'><label>Hiển thị:</label><input id='p_caption' type='text' value='${ctrl.dataset.caption||""}'></div>
-      <div class='property'><label>Comment:</label><input id='p_comment' type='text' value='${ctrl.dataset.comment||""}'></div>
-      <div class='property'><label>Phần/Menu:</label><input id='p_part' type='text' value='${ctrl.dataset.part||""}'></div>
-      <div class='property'><label>Style:</label><input id='p_style' readonly value='${ctrl.dataset.style}'></div>
-      <div class='property'><label><input type='checkbox' id='p_lock' ${locked}> 🔒 Khóa riêng</label></div>
-    `;
+      <div class='property'><label>Hiển thị:</label><input id='p_caption' type='text' value='${ctrl.dataset.caption || ""}'></div>
+      <div class='property'><label>Phần/Menu:</label><input id='p_part' type='text' value='${ctrl.dataset.part || ""}'></div>
 
-    // Liên kết giá trị realtime
-    const updateDisplay = () => {
-      if(ctrl.tagName==="BUTTON"||ctrl.tagName==="LABEL"||ctrl.tagName==="DIV") ctrl.textContent=ctrl.dataset.caption;
-      else if(ctrl.tagName==="INPUT") ctrl.value=ctrl.dataset.caption;
-      else if(ctrl.tagName==="FIELDSET") ctrl.querySelector("legend").textContent=ctrl.dataset.caption;
-    };
+      <div class='property flex-row'>
+        <label for='p_visible' style='display:flex;align-items:center;gap:6px;'>
+          👁 Hiển thị
+          <input type='checkbox' id='p_visible' ${checkedVis} style='transform:scale(1.1);margin-left:6px;'>
+        </label>
+      </div>
+      <div class='property flex-row'>
+        <label for='p_lock' style='display:flex;align-items:center;gap:6px;'>
+          🔒 Khóa riêng
+          <input type='checkbox' id='p_lock' ${checkedLock} style='transform:scale(1.1);margin-left:6px;'>
+        </label>
+      </div>
+    `;
 
     ["x","y","w","h"].forEach(k=>{
       document.getElementById("p_"+k).oninput=e=>{
@@ -785,110 +822,69 @@ canvasWrapper.scrollLeft = CENTER - canvasWrapper.clientWidth / 2;
         if(k==="h")ctrl.style.height=v+"px";
       };
     });
-
     document.getElementById("p_caption").oninput=e=>{
       ctrl.dataset.caption=e.target.value;
-      updateDisplay();
+      if(ctrl.tagName==="BUTTON"||ctrl.tagName==="DIV") ctrl.textContent=e.target.value;
     };
-    document.getElementById("p_comment").oninput=e=>ctrl.dataset.comment=e.target.value;
     document.getElementById("p_part").oninput=e=>ctrl.dataset.part=e.target.value;
+    document.getElementById("p_visible").onchange=e=>{
+      ctrl.dataset.visible=e.target.checked?"true":"false";
+      ctrl.style.display=e.target.checked?"block":"none";
+      saveState();
+    };
     document.getElementById("p_lock").onchange=e=>{
       ctrl.dataset.lock=e.target.checked?"true":"false";
       ctrl.classList.toggle("locked",e.target.checked);
     };
   }
 
-  // 💾 JSON save/load
-  const getLayout=()=>[...document.querySelectorAll(".control")].map(c=>{
-    const tabs=c.classList.contains("ctrl-MenuBar")?[...c.querySelectorAll(".menu-tab")].map(t=>t.textContent):undefined;
-    return{
-      type:c.dataset.type,caption:c.dataset.caption,comment:c.dataset.comment,part:c.dataset.part,style:c.dataset.style,lock:c.dataset.lock,tabs,
-      x:parseInt(c.style.left)-CENTER,y:parseInt(c.style.top)-CENTER,w:parseInt(c.style.width),h:parseInt(c.style.height)
-    };
-  });
-  const setLayout=data=>{
-    canvas.innerHTML='<div id="axisX" class="axis"></div><div id="axisY" class="axis"></div>';
-    data.forEach(d=>addControl(d.type,d));
-  };
-  const saveState=()=>{undoStack.push(JSON.stringify(getLayout())); if(undoStack.length>MAX_UNDO)undoStack.shift();};
-
-  // 📤 Export C++
-  // 📤 Nút xuất code
-  document.getElementById("exportBtn").onclick = () => {
-    const type = document.getElementById("exportSelect").value;
+  // ======== EXPORT ========
+  exportBtn.onclick = () => {
+    const type = exportSelect.value;
     const layout = getLayout();
     let out = "";
 
-    if (type === "cpp") {
-      out = "// Win32 UI Builder Pro v9.9\n#include <windows.h>\n\nvoid CreateUI(HWND hwnd,HINSTANCE hInst){\n";
-      out += "    HFONT hFont=(HFONT)GetStockObject(DEFAULT_GUI_FONT);\n";
+    if (type === "json") out = JSON.stringify(layout, null, 2);
+    else if (type === "cpp") {
+      out = "// Win32 UI Builder Export\n#include <windows.h>\nvoid CreateUI(HWND hwnd,HINSTANCE hInst){\n";
+      out += "HFONT hFont=(HFONT)GetStockObject(DEFAULT_GUI_FONT);\n";
       layout.forEach((c,i)=>{
-        if(c.type==="MainForm")return;
-        if(c.type==="MenuBar"){
-          out += `\n    // Control: MenuBar | ${c.comment||""}\n    HMENU hMenu=CreateMenu();\n`;
-          if(c.tabs)c.tabs.forEach(tab=>out+=`    AppendMenu(hMenu,MF_STRING,0,L"${tab}");\n`);
-          out += "    SetMenu(hwnd,hMenu);\n";
-        } else {
-          out += `\n    // Control: ${c.type} (${c.caption}) | ${c.comment||""}\n`;
-          out += `    HWND h${c.type}${i}=CreateWindowW(L"${c.type}",L"${c.caption}",${c.style},${c.x},${c.y},${c.w},${c.h},hwnd,(HMENU)${1000+i},hInst,NULL);\n`;
-          out += `    SendMessage(h${c.type}${i},WM_SETFONT,(WPARAM)hFont,TRUE);\n`;
-        }
+        if(c.type==="MenuBar"){out+=`HMENU hMenu=CreateMenu();\n`; if(c.tabs)c.tabs.forEach(t=>out+=`AppendMenu(hMenu,MF_STRING,0,L"${t}");\n`); out+="SetMenu(hwnd,hMenu);\n";return;}
+        out+=`HWND h${c.type}${i}=CreateWindowW(L"${c.type}",L"${c.caption}",WS_CHILD|WS_VISIBLE,${c.x},${c.y},${c.w},${c.h},hwnd,(HMENU)${1000+i},hInst,NULL);\n`;
+        if(c.visible==="false") out+=`ShowWindow(h${c.type}${i},SW_HIDE);\n`;
       });
-      out += "}\n";
+      out+="}\n";
     }
 
-    else if (type === "json") {
-      out = JSON.stringify(layout, null, 2);
-    }
-
-    else if (type === "ts") {
-      out = "// Auto-generated TypeScript UI structure\ninterface Control {\n  type: string;\n  caption: string;\n  x: number; y: number; w: number; h: number;\n}\n\nconst layout: Control[] = " + JSON.stringify(layout, null, 2) + ";\nexport default layout;";
-    }
-
-    else if (type === "py") {
-      out = "# Python tkinter UI\nimport tkinter as tk\nroot = tk.Tk()\n\n";
-      layout.forEach((c,i)=>{
-        if(c.type==="Button") out += `b${i} = tk.Button(root, text="${c.caption}")\nb${i}.place(x=${c.x}, y=${c.y}, width=${c.w}, height=${c.h})\n`;
-        else if(c.type==="Edit") out += `e${i} = tk.Entry(root)\ne${i}.place(x=${c.x}, y=${c.y}, width=${c.w}, height=${c.h})\n`;
-        else if(c.type==="Static") out += `l${i} = tk.Label(root, text="${c.caption}")\nl${i}.place(x=${c.x}, y=${c.y}, width=${c.w}, height=${c.h})\n`;
-      });
-      out += "\nroot.mainloop()";
-    }
-
-    // ✏️ Hiển thị và copy
-    document.getElementById("outputZone").textContent = out;
+    outputZone.textContent = out;
     navigator.clipboard.writeText(out);
     alert(`✅ Đã xuất & copy code ${type.toUpperCase()}!`);
   };
 
-
-  // 💾 Save & Load JSON
-  document.getElementById("saveBtn").onclick=()=>{
-    const blob=new Blob([JSON.stringify(getLayout(),null,2)],{type:"application/json"});
-    const a=document.createElement("a");
-    a.href=URL.createObjectURL(blob); a.download="layout_v9.9.json"; a.click();
-  };
-  document.getElementById("loadBtn").onclick=()=>{
-    const inp=document.createElement("input"); inp.type="file"; inp.accept=".json";
-    inp.onchange=e=>{
-      const f=e.target.files[0]; if(!f)return;
-      const r=new FileReader();
-      r.onload=ev=>{
-        try{ setLayout(JSON.parse(ev.target.result)); alert("✅ Nạp layout thành công!"); }
-        catch(err){ alert("❌ Lỗi đọc layout: "+err.message); }
-      };
-      r.readAsText(f);
+  // ======== LAYOUT ========
+  const getLayout = () => [...document.querySelectorAll(".control")].map(c=>{
+    const tabs=c.classList.contains("ctrl-MenuBar")?[...c.querySelectorAll(".menu-tab")].map(t=>t.textContent.trim()):undefined;
+    return{
+      type:c.dataset.type,caption:c.dataset.caption,comment:c.dataset.comment,part:c.dataset.part,
+      lock:c.dataset.lock,visible:c.dataset.visible,tabs,
+      x:parseInt(c.style.left)-CENTER,y:parseInt(c.style.top)-CENTER,
+      w:parseInt(c.style.width),h:parseInt(c.style.height)
     };
-    inp.click();
+  });
+
+  const setLayout = data => {
+    canvas.innerHTML='<div id="axisX" class="axis"></div><div id="axisY" class="axis"></div>';
+    data.forEach(d=>addControl(d.type,d));
+    scrollToCenter();
+    const menuBar=document.querySelector(".ctrl-MenuBar");
+	document.querySelector(".menu-tab")?.click();
+    if(menuBar) bindMenuTabs(menuBar);
   };
 
-  document.getElementById("copyOutput").onclick=()=>{
-    navigator.clipboard.writeText(document.getElementById("outputZone").textContent);
-    alert("✅ Copied!");
-  };
+  // ======== KHỞI TẠO ========
+  scrollToCenter();
+  updateZoom();
 });
-
-
 </script>
 
 </body>
